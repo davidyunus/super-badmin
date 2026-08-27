@@ -293,6 +293,51 @@ th {
   justify-content: space-between;
   align-items: center;
 }
+.player-row {
+  gap: 10px;
+}
+.player-row > span {
+  flex: 1 1 180px;
+}
+.player-row > span input {
+  margin: 0;
+  font-weight: 700;
+}
+.player-row label {
+  color: #6b7280;
+  font-size: 11px;
+}
+.player-row label input,
+.player-row select {
+  margin-top: 4px;
+  padding: 7px;
+  width: 74px;
+}
+.player-row select {
+  width: 86px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+}
+.remove {
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  background: white;
+  border-radius: 7px;
+  padding: 7px 9px;
+}
+.notice {
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+  padding: 8px 10px;
+}
+.player-actions {
+  padding-top: 0;
+}
+.player-actions .primary {
+  width: auto;
+  padding: 9px 14px;
+}
 .players span {
   display: flex;
   flex-direction: column;

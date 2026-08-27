@@ -2,12 +2,12 @@ import { useMemo, useState } from 'react';
 import playersData from './data/players.json';
 import { generateSchedule } from './scheduler';
 import { Category, Match, Player, PlayerStats, Session } from './types';
-import { clearSession, emptyStats, loadSession, saveSession } from './utils/storage';
-const players = playersData as Player[];
+import { clearSession, emptyStats, loadPlayers, loadSession, savePlayers, saveSession } from './utils/storage';
 const cats: Category[] = ['MD', 'XD', 'WD'];
-const rating = (n: string) => players.find((p) => p.name === n)?.rating ?? 0;
-function statsForMatches(ms: Match[]) {
-  const s = emptyStats(players.map((p) => p.name));
+function statsForMatches(ms: Match[], players: Player[]) {
+  const names = new Set(players.map((p) => p.name));
+  ms.forEach((m) => [...m.teamA, ...m.teamB].forEach((name) => names.add(name)));
+  const s = emptyStats([...names]);
   for (const m of ms) {
     if (m.scoreA == null || m.scoreB == null) continue;
     const aw = m.scoreA > m.scoreB;
@@ -30,6 +30,7 @@ function statsForMatches(ms: Match[]) {
 }
 export default function App() {
   const [session, setSession] = useState<Session | null>(() => loadSession());
+  const [players, setPlayers] = useState<Player[]>(() => loadPlayers(playersData as Player[]));
   const [rounds, setRounds] = useState(20);
   const [courts, setCourts] = useState(3);
   const [selected, setSelected] = useState<Category[]>(cats);
@@ -37,6 +38,10 @@ export default function App() {
   const save = (s: Session) => {
     setSession(s);
     saveSession(s);
+  };
+  const updatePlayers = (next: Player[]) => {
+    setPlayers(next);
+    savePlayers(next);
   };
   const generate = () => {
     const ms = generateSchedule(players, rounds, courts, selected);
@@ -53,7 +58,7 @@ export default function App() {
   const score = (id: string, a: number, b: number) => {
     if (!session) return;
     const ms = session.matches.map((m) => (m.id === id ? { ...m, scoreA: a, scoreB: b } : m));
-    save({ ...session, matches: ms, stats: statsForMatches(ms) });
+    save({ ...session, matches: ms, stats: statsForMatches(ms, players) });
   };
   const reset = () => {
     if (confirm('Reset current session?')) {
@@ -133,8 +138,8 @@ export default function App() {
           </section>
         )}
         {session && tab === 'schedule' && <Schedule session={session} onScore={score} />}{' '}
-        {session && tab === 'leaderboard' && <Leaderboard stats={session.stats} />}{' '}
-        {tab === 'players' && <Players />}
+        {session && tab === 'leaderboard' && <Leaderboard players={players} stats={session.stats} />}{' '}
+        {tab === 'players' && <Players players={players} onChange={updatePlayers} hasSession={!!session} />}
       </main>
     </div>
   );
@@ -239,9 +244,9 @@ function MatchCard({
     </article>
   );
 }
-function Leaderboard({ stats }: { stats: Record<string, PlayerStats> }) {
+function Leaderboard({ players, stats }: { players: Player[]; stats: Record<string, PlayerStats> }) {
   const rows = players
-    .map((p) => ({ p, s: stats[p.name] }))
+    .map((p) => ({ p, s: stats[p.name] ?? emptyStats([p.name])[p.name] }))
     .sort((a, b) => b.s.wins - a.s.wins || b.s.diff - a.s.diff || b.s.pointsFor - a.s.pointsFor);
   return (
     <section className="card">
@@ -283,25 +288,55 @@ function Leaderboard({ stats }: { stats: Record<string, PlayerStats> }) {
     </section>
   );
 }
-function Players() {
+function Players({
+  players,
+  onChange,
+  hasSession,
+}: {
+  players: Player[];
+  onChange: (players: Player[]) => void;
+  hasSession: boolean;
+}) {
+  const update = (index: number, changes: Partial<Player>) =>
+    onChange(players.map((player, i) => (i === index ? { ...player, ...changes } : player)));
+  const remove = (index: number) => {
+    if (confirm(`Remove ${players[index].name || 'this player'} from the roster?`)) {
+      onChange(players.filter((_, i) => i !== index));
+    }
+  };
   return (
     <section className="card">
       <div className="section">
         <h1>Players</h1>
-        <p>
-          Edit <code>src/data/players.json</code> to change the roster.
-        </p>
+        <p>Changes are saved in this browser and apply when you generate a new session.</p>
+        {hasSession && <p className="notice">Current matches keep their existing players. Reset the session to generate a new schedule.</p>}
       </div>
       <div className="players">
-        {players.map((p) => (
-          <div key={p.name}>
+        {players.map((p, index) => (
+          <div key={index} className="player-row">
             <span>
-              <b>{p.name}</b>
+              <input aria-label={`Player ${index + 1} name`} value={p.name} onChange={(e) => update(index, { name: e.target.value })} />
               <small>{p.gender === 'F' ? 'Female' : 'Male'}</small>
             </span>
-            <strong>{p.rating}</strong>
+            <label>
+              Rating
+              <input type="number" min="1" max="5" value={p.rating} onChange={(e) => update(index, { rating: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })} />
+            </label>
+            <label>
+              Gender
+              <select value={p.gender} onChange={(e) => update(index, { gender: e.target.value as Player['gender'] })}>
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+              </select>
+            </label>
+            <button className="remove" aria-label={`Remove ${p.name || 'player'}`} onClick={() => remove(index)}>Remove</button>
           </div>
         ))}
+      </div>
+      <div className="section player-actions">
+        <button className="primary" onClick={() => onChange([...players, { name: 'New player', rating: 3, gender: 'M' }])}>
+          Add player
+        </button>
       </div>
     </section>
   );

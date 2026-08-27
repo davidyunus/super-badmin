@@ -1,5 +1,6 @@
-import { PlayerStats, Session } from '../types';
+import { Player, PlayerStats, Session } from '../types';
 const KEY = 'super-badmin-session-v1';
+const PLAYERS_KEY = 'super-badmin-players-v1';
 export function loadSession(): Session | null {
   try {
     const x = localStorage.getItem(KEY);
@@ -13,6 +14,17 @@ export function saveSession(s: Session) {
 }
 export function clearSession() {
   localStorage.removeItem(KEY);
+}
+export function loadPlayers(fallback: Player[]): Player[] {
+  try {
+    const x = localStorage.getItem(PLAYERS_KEY);
+    return x ? JSON.parse(x) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+export function savePlayers(players: Player[]) {
+  localStorage.setItem(PLAYERS_KEY, JSON.stringify(players));
 }
 export function emptyStats(names: string[]): Record<string, PlayerStats> {
   return Object.fromEntries(

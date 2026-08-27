@@ -113,5 +113,10 @@
     "name": "Daniel",
     "rating": 3,
     "gender": "M"
-  }
+  },
+  {
+    "name": "Henry",
+    "rating": 3,
+    "gender": "M"
+  } 
 ]
