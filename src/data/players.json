@@ -1,0 +1,117 @@
+[
+  {
+    "name": "Franz",
+    "rating": 5,
+    "gender": "M"
+  },
+  {
+    "name": "MC",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "irfan",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "waka",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "Ega",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "naufal y",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Handy D",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "Luci",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "Joan",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "Dedy",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Zulfadli",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "David",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "Jason A",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "Geby",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "Metta",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "David Yunus",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "Renaldi",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "Rian",
+    "rating": 5,
+    "gender": "M"
+  },
+  {
+    "name": "wb",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Joseph",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Dede",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Evellyn",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "Daniel",
+    "rating": 3,
+    "gender": "M"
+  }
+]
