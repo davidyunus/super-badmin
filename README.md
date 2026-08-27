@@ -1,6 +1,6 @@
 # Super-Badmin
 
-Front-end-only badminton session scheduler.
+Front-end-only badminton session scheduler. Please visit: https://davidyunus.github.io/super-badmin/ 
 
 ## Stack
 - React + TypeScript
