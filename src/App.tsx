@@ -91,7 +91,7 @@ export default function App() {
           <section className="card setup">
             <h1>Create session</h1>
             <p>
-              23 players · 3 courts · doubles only. Rating balance is prioritized, then
+              24 players · 3 courts · doubles only. Rating balance is prioritized, then
               partner/opponent variety and playing load.
             </p>
             <div className="grid">

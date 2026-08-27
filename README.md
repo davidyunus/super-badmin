@@ -24,7 +24,7 @@ npm run build
 Edit `src/data/players.json`. Each player has only `name`, `rating`, and `gender`.
 
 ## Current MVP
-- 23-player roster
+- 24-player roster
 - 3-court session generation
 - MD / XD / WD only
 - Configurable rounds/courts
