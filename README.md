@@ -1,13 +1,13 @@
 # Super-Badmin
 
-Front-end-only badminton session scheduler. Please visit: https://davidyunus.github.io/super-badmin/ 
+Badminton session scheduler with optional shared live scoring.
 
 ## Stack
 - React + TypeScript
 - Vite
 - JSON roster
 - localStorage for session/results
-- No backend/database
+- Cloudflare Worker + Durable Object for shared live sessions
 
 ## Run
 ```bash
@@ -37,7 +37,12 @@ Edit `src/data/players.json`. Each player has only `name`, `rating`, and `gender
 
 ## Shared live sessions
 
-The app supports shared rooms through the Cloudflare Worker backend. Enter the same room code on each device, then generate a session on the host device. Score changes are broadcast to every connected device.
+The app supports shared rooms through the Cloudflare Worker backend. Enter the
+same room code on each device, then generate a session on the host device. Score
+changes are broadcast to every connected device.
+
+Enter the same room code on each device, or use the **Shared room** field to
+join an existing room.
 
 For local development, run the Worker and frontend in separate terminals:
 
