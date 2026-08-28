@@ -201,10 +201,19 @@ function MatchCard({
 }) {
   const [a, setA] = useState(match.scoreA?.toString() ?? '');
   const [b, setB] = useState(match.scoreB?.toString() ?? '');
-  const save = () => {
-    const x = Number(a),
-      y = Number(b);
-    if (Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0) onScore(match.id, x, y);
+  const updateScore = (nextA: string, nextB: string) => {
+    const scoreA = Number(nextA);
+    const scoreB = Number(nextB);
+    if (
+      nextA !== '' &&
+      nextB !== '' &&
+      Number.isFinite(scoreA) &&
+      Number.isFinite(scoreB) &&
+      scoreA >= 0 &&
+      scoreB >= 0
+    ) {
+      onScore(match.id, scoreA, scoreB);
+    }
   };
   return (
     <article className="card match">
@@ -230,16 +239,21 @@ function MatchCard({
           inputMode="numeric"
           value={a}
           placeholder="0"
-          onChange={(e) => setA(e.target.value)}
+          onChange={(e) => {
+            setA(e.target.value);
+            updateScore(e.target.value, b);
+          }}
         />
         <span>—</span>
         <input
           inputMode="numeric"
           value={b}
           placeholder="0"
-          onChange={(e) => setB(e.target.value)}
+          onChange={(e) => {
+            setB(e.target.value);
+            updateScore(a, e.target.value);
+          }}
         />
-        <button onClick={save}>Save</button>
       </div>
     </article>
   );
