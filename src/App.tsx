@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import playersData from './data/players.json';
 import { generateSchedule } from './scheduler';
 import { Category, Match, Player, PlayerStats, Session } from './types';
+import { LiveMessage, LiveStatus, liveSocketUrl } from './utils/liveSession';
 import { clearSession, emptyStats, loadPlayers, loadSession, savePlayers, saveSession } from './utils/storage';
 const cats: Category[] = ['MD', 'XD', 'WD'];
 function statsForMatches(ms: Match[], players: Player[]) {
@@ -35,9 +36,48 @@ export default function App() {
   const [courts, setCourts] = useState(3);
   const [selected, setSelected] = useState<Category[]>(cats);
   const [tab, setTab] = useState<'schedule' | 'leaderboard' | 'players'>('schedule');
+  const [roomId, setRoomId] = useState(() => new URLSearchParams(location.search).get('room') ?? '');
+  const [roomInput, setRoomInput] = useState(() => new URLSearchParams(location.search).get('room') ?? '');
+  const [liveStatus, setLiveStatus] = useState<LiveStatus>('disconnected');
+  const socket = useRef<WebSocket | null>(null);
+  const playersRef = useRef(players);
+  playersRef.current = players;
+  useEffect(() => {
+    if (!roomId.trim()) {
+      setLiveStatus('disconnected');
+      return;
+    }
+    setLiveStatus('connecting');
+    const connection = new WebSocket(liveSocketUrl(roomId.trim()));
+    socket.current = connection;
+    connection.onopen = () => setLiveStatus('connected');
+    connection.onmessage = (event) => {
+      const message = JSON.parse(event.data) as { type: string; value?: Session };
+      if (message.type !== 'state' || !message.value) return;
+      const next = {
+        ...message.value,
+        stats: statsForMatches(message.value.matches, playersRef.current),
+      };
+      setSession(next);
+      saveSession(next);
+    };
+    connection.onerror = () => setLiveStatus('disconnected');
+    connection.onclose = () => {
+      if (socket.current === connection) socket.current = null;
+      setLiveStatus('disconnected');
+    };
+    return () => {
+      connection.close();
+      if (socket.current === connection) socket.current = null;
+    };
+  }, [roomId]);
+  const sendLive = (message: LiveMessage) => {
+    if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify(message));
+  };
   const save = (s: Session) => {
     setSession(s);
     saveSession(s);
+    sendLive({ type: 'replace', value: s });
   };
   const updatePlayers = (next: Player[]) => {
     setPlayers(next);
@@ -58,7 +98,17 @@ export default function App() {
   const score = (id: string, a: number, b: number) => {
     if (!session) return;
     const ms = session.matches.map((m) => (m.id === id ? { ...m, scoreA: a, scoreB: b } : m));
-    save({ ...session, matches: ms, stats: statsForMatches(ms, players) });
+    const next = { ...session, matches: ms, stats: statsForMatches(ms, players) };
+    setSession(next);
+    saveSession(next);
+    sendLive({ type: 'score', matchId: id, scoreA: a, scoreB: b });
+  };
+  const joinRoom = () => {
+    const nextRoom = roomInput.trim().replace(/[^A-Za-z0-9_-]/g, '');
+    if (!nextRoom) return;
+    setRoomInput(nextRoom);
+    setRoomId(nextRoom);
+    history.replaceState(null, '', `?room=${encodeURIComponent(nextRoom)}`);
   };
   const reset = () => {
     if (confirm('Reset current session?')) {
@@ -72,6 +122,9 @@ export default function App() {
         <div>
           <b>🏸 SUPER-BADMIN</b>
           <small>Casual badminton matchmaker</small>
+        </div>
+        <div className="live-status">
+          {roomId ? `${liveStatus} · ${roomId}` : 'Local session'}
         </div>
         {session && (
           <button className="danger" onClick={reset}>
@@ -87,6 +140,13 @@ export default function App() {
         ))}
       </nav>
       <main>
+        <div className="room-controls card">
+          <label>
+            Shared room
+            <input value={roomInput} placeholder="e.g. friday-night" onChange={(e) => setRoomInput(e.target.value)} />
+          </label>
+          <button onClick={joinRoom}>Join room</button>
+        </div>
         {!session && (
           <section className="card setup">
             <h1>Create session</h1>

@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "worker:typecheck": "tsc -p tsconfig.worker.json",
+    "worker:dev": "wrangler dev",
+    "worker:deploy": "wrangler deploy",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -16,8 +19,10 @@
     "vite": "^6.0.5"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260828.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
-    "prettier": "^3.9.6"
+    "prettier": "^3.9.6",
+    "wrangler": "^4.127.0"
   }
 }
