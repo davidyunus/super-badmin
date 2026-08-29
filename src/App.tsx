@@ -359,8 +359,9 @@ function MatchCard({
   );
 }
 function Leaderboard({ players, stats }: { players: Player[]; stats: Record<string, PlayerStats> }) {
-  const rows = activePlayers(players)
+  const rows = players
     .map((p) => ({ p, s: stats[p.name] ?? emptyStats([p.name])[p.name] }))
+    .filter((x) => x.s.games > 0)
     .sort((a, b) => b.s.wins - a.s.wins || b.s.diff - a.s.diff || b.s.pointsFor - a.s.pointsFor);
   return (
     <section className="card">
@@ -382,7 +383,7 @@ function Leaderboard({ players, stats }: { players: Player[]; stats: Record<stri
           </thead>
           <tbody>
             {rows.map((x, i) => (
-              <tr key={x.p.name}>
+              <tr key={x.p.name} className={x.p.disabled ? 'inactive-row' : ''}>
                 <td>{i + 1}</td>
                 <td>
                   <b>{x.p.name}</b>

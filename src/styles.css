@@ -298,6 +298,12 @@ th {
   color: #b91c1c;
   font-weight: 700;
 }
+.inactive-row {
+  color: #6b7280;
+}
+.inactive-row b {
+  color: #6b7280;
+}
 .players {
   display: grid;
   grid-template-columns: repeat(2, minmax(260px, 1fr));
