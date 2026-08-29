@@ -74,8 +74,9 @@ export function generateSchedule(
   courts: number,
   cats: Category[]
 ): Match[] {
+  const activePlayers = players.filter((p) => !p.disabled);
   const all: Match[] = [];
-  const g: Record<string, number> = Object.fromEntries(players.map((p) => [p.name, 0]));
+  const g: Record<string, number> = Object.fromEntries(activePlayers.map((p) => [p.name, 0]));
   const partners = new Map<string, number>(),
     opps = new Map<string, number>();
   let recent = new Set<string>();
@@ -84,7 +85,7 @@ export function generateSchedule(
       matches: Match[] = [];
     for (const c of shuffle(cats)) {
       if (matches.length >= courts) break;
-      const cs = candidates(players, c).sort(
+      const cs = candidates(activePlayers, c).sort(
         (a, b) =>
           candidateScore(a, g, partners, opps, recent) -
           candidateScore(b, g, partners, opps, recent)
@@ -116,7 +117,7 @@ export function generateSchedule(
     while (matches.length < courts) {
       let added = false;
       for (const c of shuffle(cats)) {
-        const cs = candidates(players, c).sort(
+        const cs = candidates(activePlayers, c).sort(
           (a, b) =>
             candidateScore(a, g, partners, opps, recent) -
             candidateScore(b, g, partners, opps, recent)

@@ -300,8 +300,8 @@ th {
 }
 .players {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 10px;
   padding: 0 20px 20px;
 }
 .players > div {
@@ -312,14 +312,32 @@ th {
   justify-content: space-between;
   align-items: center;
 }
+.toggle {
+  border: 1px solid #d1d5db;
+  background: #ecfdf5;
+  color: #065f46;
+  border-radius: 7px;
+  padding: 8px 12px;
+  min-height: 38px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.toggle.inactive {
+  background: #f3f4f6;
+  color: #4b5563;
+}
 .player-row {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.8fr) 110px 110px auto auto;
+  align-items: end;
   gap: 10px;
 }
 .player-row > span {
-  flex: 1 1 180px;
+  min-width: 0;
 }
 .player-row > span input {
   margin: 0;
+  height: 38px;
   font-weight: 700;
 }
 .player-row label {
@@ -329,11 +347,11 @@ th {
 .player-row label input,
 .player-row select {
   margin-top: 4px;
-  padding: 7px;
-  width: 74px;
+  padding: 8px 7px;
+  width: 100%;
+  min-height: 38px;
 }
 .player-row select {
-  width: 86px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   background: white;
@@ -343,7 +361,9 @@ th {
   color: #b91c1c;
   background: white;
   border-radius: 7px;
-  padding: 7px 9px;
+  padding: 8px 12px;
+  min-height: 38px;
+  font-size: 13px;
 }
 .notice {
   background: #fffbeb;

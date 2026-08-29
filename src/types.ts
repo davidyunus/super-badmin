@@ -4,6 +4,7 @@ export interface Player {
   name: string;
   rating: number;
   gender: Gender;
+  disabled?: boolean;
 }
 export interface PlayerStats {
   games: number;
@@ -30,5 +31,6 @@ export interface Session {
   rounds: number;
   categories: Category[];
   matches: Match[];
+  baseMatches?: Match[];
   stats: Record<string, PlayerStats>;
 }

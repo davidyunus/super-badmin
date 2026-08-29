@@ -5,6 +5,23 @@ import { Category, Match, Player, PlayerStats, Session } from './types';
 import { LiveMessage, LiveStatus, liveSocketUrl } from './utils/liveSession';
 import { clearSession, emptyStats, loadPlayers, loadSession, savePlayers, saveSession } from './utils/storage';
 const cats: Category[] = ['MD', 'XD', 'WD'];
+function activePlayers(players: Player[]) {
+  return players.filter((p) => !p.disabled);
+}
+function pruneInactivePlayers(session: Session, players: Player[]): Session {
+  const baseMatches = session.baseMatches ?? session.matches;
+  const activeNames = new Set(activePlayers(players).map((p) => p.name));
+  const matches = baseMatches
+    .map((match) => {
+      if (match.scoreA != null && match.scoreB != null) return match;
+      const teamA = match.teamA.filter((name) => activeNames.has(name)) as [string, string];
+      const teamB = match.teamB.filter((name) => activeNames.has(name)) as [string, string];
+      if (teamA.length < 2 || teamB.length < 2) return null;
+      return { ...match, teamA, teamB };
+    })
+    .filter((match): match is Match => match !== null);
+  return { ...session, matches, baseMatches, stats: statsForMatches(matches, activePlayers(players)) };
+}
 function statsForMatches(ms: Match[], players: Player[]) {
   const names = new Set(players.map((p) => p.name));
   ms.forEach((m) => [...m.teamA, ...m.teamB].forEach((name) => names.add(name)));
@@ -54,8 +71,10 @@ export default function App() {
     connection.onmessage = (event) => {
       const message = JSON.parse(event.data) as { type: string; value?: Session };
       if (message.type !== 'state' || !message.value) return;
+      const baseMatches = message.value.baseMatches ?? message.value.matches;
       const next = {
         ...message.value,
+        baseMatches,
         stats: statsForMatches(message.value.matches, playersRef.current),
       };
       setSession(next);
@@ -75,16 +94,18 @@ export default function App() {
     if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify(message));
   };
   const save = (s: Session) => {
-    setSession(s);
-    saveSession(s);
-    sendLive({ type: 'replace', value: s });
+    const full = { ...s, baseMatches: s.baseMatches ?? s.matches };
+    setSession(full);
+    saveSession(full);
+    sendLive({ type: 'replace', value: full });
   };
   const updatePlayers = (next: Player[]) => {
     setPlayers(next);
     savePlayers(next);
   };
   const generate = () => {
-    const ms = generateSchedule(players, rounds, courts, selected);
+    const active = activePlayers(players);
+    const ms = generateSchedule(active, rounds, courts, selected);
     save({
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
@@ -92,13 +113,20 @@ export default function App() {
       rounds,
       categories: selected,
       matches: ms,
-      stats: emptyStats(players.map((p) => p.name)),
+      baseMatches: ms,
+      stats: emptyStats(active.map((p) => p.name)),
     });
   };
   const score = (id: string, a: number, b: number) => {
     if (!session) return;
+    const baseMatches = session.baseMatches ?? session.matches;
     const ms = session.matches.map((m) => (m.id === id ? { ...m, scoreA: a, scoreB: b } : m));
-    const next = { ...session, matches: ms, stats: statsForMatches(ms, players) };
+    const next = {
+      ...session,
+      matches: ms,
+      baseMatches: baseMatches.map((m) => (m.id === id ? { ...m, scoreA: a, scoreB: b } : m)),
+      stats: statsForMatches(ms, players),
+    };
     setSession(next);
     saveSession(next);
     sendLive({ type: 'score', matchId: id, scoreA: a, scoreB: b });
@@ -116,6 +144,7 @@ export default function App() {
       setSession(null);
     }
   };
+  const visibleSession = useMemo(() => (session ? pruneInactivePlayers(session, players) : null), [session, players]);
   return (
     <div className="app">
       <header>
@@ -197,8 +226,8 @@ export default function App() {
             </button>
           </section>
         )}
-        {session && tab === 'schedule' && <Schedule session={session} onScore={score} />}{' '}
-        {session && tab === 'leaderboard' && <Leaderboard players={players} stats={session.stats} />}{' '}
+        {visibleSession && tab === 'schedule' && <Schedule session={visibleSession} onScore={score} />}{' '}
+        {visibleSession && tab === 'leaderboard' && <Leaderboard players={players} stats={visibleSession.stats} />}{' '}
         {tab === 'players' && <Players players={players} onChange={updatePlayers} hasSession={!!session} />}
       </main>
     </div>
@@ -319,7 +348,7 @@ function MatchCard({
   );
 }
 function Leaderboard({ players, stats }: { players: Player[]; stats: Record<string, PlayerStats> }) {
-  const rows = players
+  const rows = activePlayers(players)
     .map((p) => ({ p, s: stats[p.name] ?? emptyStats([p.name])[p.name] }))
     .sort((a, b) => b.s.wins - a.s.wins || b.s.diff - a.s.diff || b.s.pointsFor - a.s.pointsFor);
   return (
@@ -403,6 +432,12 @@ function Players({
                 <option value="F">Female</option>
               </select>
             </label>
+            <button
+              className={p.disabled ? 'toggle inactive' : 'toggle'}
+              onClick={() => update(index, { disabled: !p.disabled })}
+            >
+              {p.disabled ? 'Disabled' : 'Active'}
+            </button>
             <button className="remove" aria-label={`Remove ${p.name || 'player'}`} onClick={() => remove(index)}>Remove</button>
           </div>
         ))}
