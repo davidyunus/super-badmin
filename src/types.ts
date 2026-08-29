@@ -31,6 +31,7 @@ export interface Session {
   rounds: number;
   categories: Category[];
   matches: Match[];
+  players?: Player[];
   baseMatches?: Match[];
   stats: Record<string, PlayerStats>;
 }

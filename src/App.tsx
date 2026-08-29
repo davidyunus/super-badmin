@@ -72,11 +72,15 @@ export default function App() {
       const message = JSON.parse(event.data) as { type: string; value?: Session };
       if (message.type !== 'state' || !message.value) return;
       const baseMatches = message.value.baseMatches ?? message.value.matches;
+      const nextPlayers = message.value.players ?? playersRef.current;
       const next = {
         ...message.value,
+        players: nextPlayers,
         baseMatches,
-        stats: statsForMatches(message.value.matches, playersRef.current),
+        stats: statsForMatches(message.value.matches, nextPlayers),
       };
+      setPlayers(nextPlayers);
+      savePlayers(nextPlayers);
       setSession(next);
       saveSession(next);
     };
@@ -94,7 +98,7 @@ export default function App() {
     if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify(message));
   };
   const save = (s: Session) => {
-    const full = { ...s, baseMatches: s.baseMatches ?? s.matches };
+    const full = { ...s, players, baseMatches: s.baseMatches ?? s.matches };
     setSession(full);
     saveSession(full);
     sendLive({ type: 'replace', value: full });
@@ -102,6 +106,12 @@ export default function App() {
   const updatePlayers = (next: Player[]) => {
     setPlayers(next);
     savePlayers(next);
+    if (session) {
+      const merged = { ...session, players: next };
+      setSession(merged);
+      saveSession(merged);
+      sendLive({ type: 'replace', value: merged });
+    }
   };
   const generate = () => {
     const active = activePlayers(players);
@@ -113,6 +123,7 @@ export default function App() {
       rounds,
       categories: selected,
       matches: ms,
+      players,
       baseMatches: ms,
       stats: emptyStats(active.map((p) => p.name)),
     });
