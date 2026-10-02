@@ -86,12 +86,20 @@ export class SessionRoom {
     const room = await this.state.storage.get<RoomState>('room');
     if (!room || !isSessionValue(room.value)) return;
 
-    const matches = room.value.matches.map((match) =>
-      match.id === message.matchId
-        ? { ...match, scoreA: message.scoreA, scoreB: message.scoreB }
-        : match
-    );
-    await this.replace({ ...room.value, matches });
+    const updateMatches = (matches: Array<{ id: string }>) =>
+      matches.map((match) =>
+        match.id === message.matchId
+          ? { ...match, scoreA: message.scoreA, scoreB: message.scoreB }
+          : match
+      );
+    const value = {
+      ...room.value,
+      matches: updateMatches(room.value.matches),
+      ...(Array.isArray(room.value.baseMatches)
+        ? { baseMatches: updateMatches(room.value.baseMatches) }
+        : {}),
+    };
+    await this.replace(value);
   }
 
   private broadcast(message: unknown) {
@@ -106,7 +114,9 @@ export class SessionRoom {
   }
 }
 
-function isSessionValue(value: unknown): value is { matches: Array<{ id: string }> } {
+function isSessionValue(
+  value: unknown
+): value is { matches: Array<{ id: string }>; baseMatches?: Array<{ id: string }> } {
   return (
     typeof value === 'object' &&
     value !== null &&

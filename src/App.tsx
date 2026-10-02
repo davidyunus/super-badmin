@@ -17,7 +17,13 @@ function activePlayers(players: Player[]) {
   return players.filter((p) => !p.disabled);
 }
 function pruneInactivePlayers(session: Session, players: Player[]): Session {
-  const baseMatches = session.baseMatches ?? session.matches;
+  const scoredMatches = new Map(session.matches.map((match) => [match.id, match]));
+  const baseMatches = (session.baseMatches ?? session.matches).map((match) => {
+    const scored = scoredMatches.get(match.id);
+    return scored
+      ? { ...match, scoreA: scored.scoreA ?? match.scoreA, scoreB: scored.scoreB ?? match.scoreB }
+      : match;
+  });
   const activeNames = new Set(activePlayers(players).map((p) => p.name));
   const matches = baseMatches
     .map((match) => {
@@ -338,6 +344,10 @@ function MatchCard({
 }) {
   const [a, setA] = useState(match.scoreA?.toString() ?? '');
   const [b, setB] = useState(match.scoreB?.toString() ?? '');
+  useEffect(() => {
+    setA(match.scoreA?.toString() ?? '');
+    setB(match.scoreB?.toString() ?? '');
+  }, [match.id, match.scoreA, match.scoreB]);
   const updateScore = (nextA: string, nextB: string) => {
     const scoreA = Number(nextA);
     const scoreB = Number(nextB);
