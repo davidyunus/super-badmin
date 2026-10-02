@@ -6,7 +6,7 @@ Badminton session scheduler with optional shared live scoring.
 - React + TypeScript
 - Vite
 - JSON roster
-- localStorage for session/results
+- localStorage for local sessions/results and player preferences
 - Cloudflare Worker + Durable Object for shared live sessions
 
 ## Run
@@ -24,9 +24,9 @@ npm run build
 Edit `src/data/players.json`. Each player has only `name`, `rating`, and `gender`.
 
 ## Current MVP
-- 24-player roster
+- 19-player roster
 - 3-court session generation
-- MD / XD / WD only
+- MD / XD / WD / Random categories
 - Configurable rounds/courts
 - Exact team-rating matching when possible, max difference 1
 - Partner/opponent repetition penalties
@@ -52,6 +52,11 @@ npm run dev
 ```
 
 The deployed frontend uses the live Worker automatically. To use another Worker URL, set `VITE_LIVE_API_URL` before building.
+
+Shared room state is stored by the Worker and is authoritative while a room is
+joined. Resetting a shared session clears that room for every connected device.
+Local sessions and player preferences remain in localStorage; shared sessions
+are not cached there.
 
 Worker commands:
 

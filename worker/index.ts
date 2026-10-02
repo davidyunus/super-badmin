@@ -52,7 +52,9 @@ export class SessionRoom {
     server.addEventListener('error', () => this.sockets.delete(server));
 
     const stored = await this.state.storage.get<RoomState>('room');
-    if (stored) server.send(JSON.stringify({ type: 'state', ...stored }));
+    server.send(
+      JSON.stringify(stored ? { type: 'state', ...stored } : { type: 'state', value: null })
+    );
 
     return new Response(null, { status: 101, webSocket: client });
   }

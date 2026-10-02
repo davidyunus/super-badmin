@@ -5,17 +5,37 @@
     "gender": "M"
   },
   {
-    "name": "MC",
-    "rating": 4,
-    "gender": "M"
-  },
-  {
-    "name": "Ihsan",
+    "name": "Ilham",
     "rating": 3,
     "gender": "M"
   },
   {
-    "name": "Ilham",
+    "name": "Winardi",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Ivan",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Luci",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "Joan",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "Geby",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "HenryF",
     "rating": 3,
     "gender": "M"
   },
@@ -25,88 +45,23 @@
     "gender": "M"
   },
   {
-    "name": "naufal y",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "Ega",
-    "rating": 4,
-    "gender": "M"
-  },
-  {
-    "name": "HenryF",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
     "name": "Fernaldi",
     "rating": 4,
     "gender": "M"
   },
   {
-    "name": "Luci",
-    "rating": 2,
-    "gender": "F"
-  },
-  {
-    "name": "Mario",
+    "name": "Dedy",
     "rating": 3,
     "gender": "M"
   },
   {
-    "name": "Cindy",
-    "rating": 2,
-    "gender": "F"
-  },
-  {
-    "name": "Yopaw",
+    "name": "Brandon",
     "rating": 3,
     "gender": "M"
   },
   {
-    "name": "Aris",
+    "name": "DavidS",
     "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "William",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "Safrul",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "Marwan",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "Wiryanata",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "Felix",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "Dipta",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "Juan",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "David",
-    "rating": 4,
     "gender": "M"
   },
   {
@@ -115,13 +70,33 @@
     "gender": "M"
   },
   {
-    "name": "Wb",
+    "name": "zulfadli",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "Rian",
+    "rating": 5,
+    "gender": "M"
+  },
+  {
+    "name": "Ega",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "Kevin",
     "rating": 3,
     "gender": "M"
   },
   {
-    "name": "Winardi",
+    "name": "WB",
     "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "David",
+    "rating": 4,
     "gender": "M"
   }
 ]

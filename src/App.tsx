@@ -3,8 +3,16 @@ import playersData from './data/players.json';
 import { generateSchedule } from './scheduler';
 import { Category, Match, Player, PlayerStats, Session } from './types';
 import { LiveMessage, LiveStatus, liveSocketUrl } from './utils/liveSession';
-import { clearSession, emptyStats, loadPlayers, loadSession, savePlayers, saveSession } from './utils/storage';
-const cats: Category[] = ['MD', 'XD', 'WD'];
+import {
+  clearLegacySession,
+  clearSession,
+  emptyStats,
+  loadPlayers,
+  loadSession,
+  savePlayers,
+  saveSession,
+} from './utils/storage';
+const cats: Category[] = ['MD', 'XD', 'WD', 'Random'];
 function activePlayers(players: Player[]) {
   return players.filter((p) => !p.disabled);
 }
@@ -47,7 +55,9 @@ function statsForMatches(ms: Match[], players: Player[]) {
   return s;
 }
 export default function App() {
-  const [session, setSession] = useState<Session | null>(() => loadSession());
+  const [session, setSession] = useState<Session | null>(() =>
+    new URLSearchParams(location.search).get('room')?.trim() ? null : loadSession()
+  );
   const [players, setPlayers] = useState<Player[]>(() => loadPlayers(playersData as Player[]));
   const [rounds, setRounds] = useState(20);
   const [courts, setCourts] = useState(3);
@@ -64,13 +74,22 @@ export default function App() {
       setLiveStatus('disconnected');
       return;
     }
+    clearLegacySession();
+    setSession(null);
     setLiveStatus('connecting');
     const connection = new WebSocket(liveSocketUrl(roomId.trim()));
     socket.current = connection;
-    connection.onopen = () => setLiveStatus('connected');
+    connection.onopen = () => {
+      if (socket.current === connection) setLiveStatus('connected');
+    };
     connection.onmessage = (event) => {
-      const message = JSON.parse(event.data) as { type: string; value?: Session };
-      if (message.type !== 'state' || !message.value) return;
+      if (socket.current !== connection) return;
+      const message = JSON.parse(event.data) as { type: string; value?: Session | null };
+      if (message.type !== 'state') return;
+      if (!message.value) {
+        setSession(null);
+        return;
+      }
       const baseMatches = message.value.baseMatches ?? message.value.matches;
       const nextPlayers = message.value.players ?? playersRef.current;
       const next = {
@@ -82,11 +101,13 @@ export default function App() {
       setPlayers(nextPlayers);
       savePlayers(nextPlayers);
       setSession(next);
-      saveSession(next);
     };
-    connection.onerror = () => setLiveStatus('disconnected');
+    connection.onerror = () => {
+      if (socket.current === connection) setLiveStatus('disconnected');
+    };
     connection.onclose = () => {
-      if (socket.current === connection) socket.current = null;
+      if (socket.current !== connection) return;
+      socket.current = null;
       setLiveStatus('disconnected');
     };
     return () => {
@@ -100,7 +121,7 @@ export default function App() {
   const save = (s: Session) => {
     const full = { ...s, players, baseMatches: s.baseMatches ?? s.matches };
     setSession(full);
-    saveSession(full);
+    if (!roomId.trim()) saveSession(full);
     sendLive({ type: 'replace', value: full });
   };
   const updatePlayers = (next: Player[]) => {
@@ -109,7 +130,7 @@ export default function App() {
     if (session) {
       const merged = { ...session, players: next };
       setSession(merged);
-      saveSession(merged);
+      if (!roomId.trim()) saveSession(merged);
       sendLive({ type: 'replace', value: merged });
     }
   };
@@ -139,20 +160,28 @@ export default function App() {
       stats: statsForMatches(ms, players),
     };
     setSession(next);
-    saveSession(next);
+    if (!roomId.trim()) saveSession(next);
     sendLive({ type: 'score', matchId: id, scoreA: a, scoreB: b });
   };
   const joinRoom = () => {
     const nextRoom = roomInput.trim().replace(/[^A-Za-z0-9_-]/g, '');
     if (!nextRoom) return;
     setRoomInput(nextRoom);
-    setRoomId(nextRoom);
+    if (nextRoom !== roomId.trim()) {
+      setSession(null);
+      clearLegacySession();
+      setRoomId(nextRoom);
+    }
     history.replaceState(null, '', `?room=${encodeURIComponent(nextRoom)}`);
   };
   const reset = () => {
     if (confirm('Reset current session?')) {
-      clearSession();
       setSession(null);
+      if (roomId.trim()) {
+        sendLive({ type: 'replace', value: null });
+      } else {
+        clearSession();
+      }
     }
   };
   const visibleSession = useMemo(() => (session ? pruneInactivePlayers(session, players) : null), [session, players]);
@@ -167,7 +196,11 @@ export default function App() {
           {roomId ? `${liveStatus} · ${roomId}` : 'Local session'}
         </div>
         {session && (
-          <button className="danger" onClick={reset}>
+          <button
+            className="danger"
+            onClick={reset}
+            disabled={!!roomId.trim() && liveStatus !== 'connected'}
+          >
             Reset
           </button>
         )}
@@ -191,8 +224,8 @@ export default function App() {
           <section className="card setup">
             <h1>Create session</h1>
             <p>
-              24 players · 3 courts · doubles only. Rating balance is prioritized, then
-              partner/opponent variety and playing load.
+              {activePlayers(players).length} players · {courts} courts · doubles only. Rating balance is prioritized, then
+              partner/opponent variety and playing load. Random allows any player pairing.
             </p>
             <div className="grid">
               <label>
@@ -232,7 +265,11 @@ export default function App() {
                 ))}
               </div>
             </label>
-            <button className="primary" disabled={!selected.length} onClick={generate}>
+            <button
+              className="primary"
+              disabled={!selected.length || (!!roomId.trim() && liveStatus !== 'connected')}
+              onClick={generate}
+            >
               Generate {rounds * courts} games
             </button>
           </section>
@@ -429,6 +466,7 @@ function Players({
       <div className="players">
         {players.map((p, index) => (
           <div key={index} className="player-row">
+            <strong aria-label={`Player number ${index + 1}`}>{index + 1}</strong>
             <span>
               <input aria-label={`Player ${index + 1} name`} value={p.name} onChange={(e) => update(index, { name: e.target.value })} />
               <small>{p.gender === 'F' ? 'Female' : 'Male'}</small>

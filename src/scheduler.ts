@@ -35,6 +35,7 @@ function pairs(ps: Player[], c: Category): Pair[] {
       ps.filter((p) => p.gender === 'F'),
       2
     ) as Pair[];
+  if (c === 'Random') return combos(ps, 2) as Pair[];
   return ps
     .filter((p) => p.gender === 'M')
     .flatMap((m) => ps.filter((p) => p.gender === 'F').map((f) => [m, f] as Pair));
@@ -142,6 +143,11 @@ export function generateSchedule(
           used.add(n);
           g[n]++;
         });
+        partners.set(teamKey(x.teamA), (partners.get(teamKey(x.teamA)) ?? 0) + 1);
+        partners.set(teamKey(x.teamB), (partners.get(teamKey(x.teamB)) ?? 0) + 1);
+        for (const a of x.teamA)
+          for (const b of x.teamB)
+            opps.set(key(a.name, b.name), (opps.get(key(a.name, b.name)) ?? 0) + 1);
         added = true;
         break;
       }

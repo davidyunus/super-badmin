@@ -1,5 +1,5 @@
 export type Gender = 'M' | 'F';
-export type Category = 'MD' | 'XD' | 'WD';
+export type Category = 'MD' | 'XD' | 'WD' | 'Random';
 export interface Player {
   name: string;
   rating: number;

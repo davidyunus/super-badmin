@@ -3,7 +3,7 @@ import { Session } from '../types';
 export type LiveStatus = 'connecting' | 'connected' | 'disconnected';
 
 export type LiveMessage =
-  | { type: 'replace'; value: Session }
+  | { type: 'replace'; value: Session | null }
   | { type: 'score'; matchId: string; scoreA: number; scoreB: number };
 
 export function liveSocketUrl(roomId: string) {
