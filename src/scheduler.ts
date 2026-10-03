@@ -97,22 +97,40 @@ export function generateSchedule(
   players: Player[],
   rounds: number,
   courts: number,
-  cats: Category[]
+  cats: Category[],
+  history: Match[] = [],
+  firstRound = 1
 ): Match[] {
   const activePlayers = players.filter((p) => !p.disabled);
   const all: Match[] = [];
-  const g: Record<string, number> = Object.fromEntries(activePlayers.map((p) => [p.name, 0]));
+  const g: Record<string, number> = Object.fromEntries(players.map((p) => [p.name, 0]));
   const partners = new Map<string, number>(),
     opps = new Map<string, number>();
-  let recent = new Set<string>();
+  for (const match of history) {
+    for (const name of [...match.teamA, ...match.teamB]) g[name] = (g[name] ?? 0) + 1;
+    partners.set(key(match.teamA[0], match.teamA[1]), (partners.get(key(match.teamA[0], match.teamA[1])) ?? 0) + 1);
+    partners.set(key(match.teamB[0], match.teamB[1]), (partners.get(key(match.teamB[0], match.teamB[1])) ?? 0) + 1);
+    for (const a of match.teamA)
+      for (const b of match.teamB)
+        opps.set(key(a, b), (opps.get(key(a, b)) ?? 0) + 1);
+  }
+  const priorRounds = history.filter((match) => match.round < firstRound).map((match) => match.round);
+  const lastPriorRound = Math.max(0, ...priorRounds);
+  let recent = new Set(
+    history
+      .filter((match) => match.round === lastPriorRound)
+      .flatMap((match) => [...match.teamA, ...match.teamB])
+  );
   const selectedCategories = [...new Set(cats)];
   const candidatePool = selectedCategories.flatMap((category) =>
     candidates(activePlayers, category)
   );
-  for (let r = 1; r <= rounds; r++) {
-    const used = new Set<string>(),
-      matches: Match[] = [];
-    while (matches.length < courts) {
+  for (let r = firstRound; r < firstRound + rounds; r++) {
+    const existingRound = history.filter((match) => match.round === r);
+    const occupiedCourts = new Set(existingRound.map((match) => match.court));
+    const used = new Set(existingRound.flatMap((match) => [...match.teamA, ...match.teamB]));
+    const matches: Match[] = [];
+    while (matches.length < courts - existingRound.length) {
       let x: Candidate | undefined;
       for (const candidate of candidatePool) {
         const names = [
@@ -128,16 +146,21 @@ export function generateSchedule(
         }
       }
       if (!x) break;
+      const court = Array.from({ length: courts }, (_, index) => index + 1).find(
+        (availableCourt) => !occupiedCourts.has(availableCourt)
+      );
+      if (court === undefined) break;
 
       const m: Match = {
         id: crypto.randomUUID(),
         round: r,
-        court: matches.length + 1,
+        court,
         category: x.category,
         teamA: [x.teamA[0].name, x.teamA[1].name],
         teamB: [x.teamB[0].name, x.teamB[1].name],
       };
       matches.push(m);
+      occupiedCourts.add(m.court);
       const ns = [...m.teamA, ...m.teamB];
       ns.forEach((n) => {
         used.add(n);

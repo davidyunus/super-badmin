@@ -16,14 +16,17 @@ const cats: Category[] = ['MD', 'XD', 'WD', 'Random'];
 function activePlayers(players: Player[]) {
   return players.filter((p) => !p.disabled);
 }
-function pruneInactivePlayers(session: Session, players: Player[]): Session {
+function baseMatchesWithScores(session: Session): Match[] {
   const scoredMatches = new Map(session.matches.map((match) => [match.id, match]));
-  const baseMatches = (session.baseMatches ?? session.matches).map((match) => {
+  return (session.baseMatches ?? session.matches).map((match) => {
     const scored = scoredMatches.get(match.id);
     return scored
       ? { ...match, scoreA: scored.scoreA ?? match.scoreA, scoreB: scored.scoreB ?? match.scoreB }
       : match;
   });
+}
+function pruneInactivePlayers(session: Session, players: Player[]): Session {
+  const baseMatches = baseMatchesWithScores(session);
   const activeNames = new Set(activePlayers(players).map((p) => p.name));
   const matches = baseMatches
     .map((match) => {
@@ -190,7 +193,40 @@ export default function App() {
       }
     }
   };
+  const reschedule = () => {
+    if (!session || !confirm('Reschedule all unplayed matches? Completed scores will be kept.')) return;
+    const baseMatches = baseMatchesWithScores(session);
+    const completed = baseMatches.filter((match) => match.scoreA != null && match.scoreB != null);
+    const firstPendingRound = Math.min(
+      ...baseMatches
+        .filter((match) => match.scoreA == null || match.scoreB == null)
+        .map((match) => match.round),
+      session.rounds
+    );
+    const replacements = generateSchedule(
+      activePlayers(players),
+      session.rounds - firstPendingRound + 1,
+      session.courts,
+      session.categories,
+      completed,
+      firstPendingRound
+    );
+    const matches = [...completed, ...replacements].sort(
+      (a, b) => a.round - b.round || a.court - b.court
+    );
+    save({
+      ...session,
+      matches,
+      baseMatches: matches,
+      players,
+      stats: statsForMatches(matches, players),
+    });
+  };
   const visibleSession = useMemo(() => (session ? pruneInactivePlayers(session, players) : null), [session, players]);
+  const hasUnplayedMatches = !!session &&
+    (session.baseMatches ?? session.matches).some(
+      (match) => match.scoreA == null || match.scoreB == null
+    );
   return (
     <div className="app">
       <header>
@@ -202,13 +238,25 @@ export default function App() {
           {roomId ? `${liveStatus} · ${roomId}` : 'Local session'}
         </div>
         {session && (
-          <button
-            className="danger"
-            onClick={reset}
-            disabled={!!roomId.trim() && liveStatus !== 'connected'}
-          >
-            Reset
-          </button>
+          <>
+            <button
+              className="reschedule"
+              onClick={reschedule}
+              disabled={
+                !hasUnplayedMatches ||
+                (!!roomId.trim() && liveStatus !== 'connected')
+              }
+            >
+              Reschedule
+            </button>
+            <button
+              className="danger"
+              onClick={reset}
+              disabled={!!roomId.trim() && liveStatus !== 'connected'}
+            >
+              Reset
+            </button>
+          </>
         )}
       </header>
       <nav>
@@ -470,8 +518,8 @@ function Players({
     <section className="card">
       <div className="section">
         <h1>Players</h1>
-        <p>Changes are saved in this browser and apply when you generate a new session.</p>
-        {hasSession && <p className="notice">Current matches keep their existing players. Reset the session to generate a new schedule.</p>}
+        <p>Changes are saved in this browser and apply when you generate or reschedule a session.</p>
+        {hasSession && <p className="notice">Completed matches stay unchanged. Use Reschedule to update unplayed games after changing player availability.</p>}
       </div>
       <div className="players">
         {players.map((p, index) => (

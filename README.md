@@ -32,6 +32,7 @@ Edit `src/data/players.json`. Each player has only `name`, `rating`, and `gender
 - Partner/opponent repetition penalties
 - Basic playing-load/rest balancing
 - Score entry
+- Reschedule unplayed matches while preserving completed scores
 - PDLUP-style W/L, point differential and points-for leaderboard
 - localStorage persistence
 
