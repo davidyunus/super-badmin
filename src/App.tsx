@@ -78,6 +78,7 @@ export default function App() {
   const socket = useRef<WebSocket | null>(null);
   const playersRef = useRef(players);
   playersRef.current = players;
+  const didInitialScheduleScroll = useRef(false);
   useEffect(() => {
     if (!roomId.trim()) {
       setLiveStatus('disconnected');
@@ -227,6 +228,20 @@ export default function App() {
     (session.baseMatches ?? session.matches).some(
       (match) => match.scoreA == null || match.scoreB == null
     );
+  useEffect(() => {
+    if (!visibleSession || tab !== 'schedule' || didInitialScheduleScroll.current) return;
+    didInitialScheduleScroll.current = true;
+    const firstUnscored = visibleSession.matches.find(
+      (match) => match.scoreA == null || match.scoreB == null
+    );
+    if (!firstUnscored) return;
+    requestAnimationFrame(() => {
+      document.getElementById(`match-${firstUnscored.id}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+  }, [visibleSession, tab]);
   return (
     <div className="app">
       <header>
@@ -266,7 +281,7 @@ export default function App() {
           </button>
         ))}
       </nav>
-      <main>
+      <main className={visibleSession && tab === 'schedule' ? 'has-round-nav' : ''}>
         <div className="room-controls card">
           <label>
             Shared room
@@ -328,7 +343,12 @@ export default function App() {
             </button>
           </section>
         )}
-        {visibleSession && tab === 'schedule' && <Schedule session={visibleSession} onScore={score} />}{' '}
+        {visibleSession && tab === 'schedule' && (
+          <>
+            <RoundNavigator matches={visibleSession.matches} />
+            <Schedule session={visibleSession} onScore={score} />
+          </>
+        )}{' '}
         {visibleSession && tab === 'leaderboard' && <Leaderboard players={players} stats={visibleSession.stats} />}{' '}
         {tab === 'players' && <Players players={players} onChange={updatePlayers} hasSession={!!session} />}
       </main>
@@ -368,7 +388,7 @@ function Schedule({
         </div>
       </div>
       {rounds.map(([r, ms]) => (
-        <section className="round" key={r}>
+        <section className="round" id={`round-${r}`} key={r}>
           <div className="round-title">
             <h2>Round {r}</h2>
             <span>{ms.length} courts</span>
@@ -381,6 +401,29 @@ function Schedule({
         </section>
       ))}
     </>
+  );
+}
+function RoundNavigator({ matches }: { matches: Match[] }) {
+  const rounds = [...new Set(matches.map((match) => match.round))];
+  if (rounds.length < 2) return null;
+  return (
+    <aside className="round-nav" aria-label="Jump to round">
+      {rounds.map((round) => (
+        <button
+          key={round}
+          aria-label={`Jump to round ${round}`}
+          title={`Round ${round}`}
+          onClick={() =>
+            document.getElementById(`round-${round}`)?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            })
+          }
+        >
+          {round}
+        </button>
+      ))}
+    </aside>
   );
 }
 function MatchCard({
@@ -411,7 +454,7 @@ function MatchCard({
     }
   };
   return (
-    <article className="card match">
+    <article className="card match" id={`match-${match.id}`}>
       <div className="top">
         <span className={'cat ' + match.category.toLowerCase()}>{match.category}</span>
         <span>Court {match.court}</span>
