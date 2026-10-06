@@ -500,7 +500,7 @@ function Leaderboard({ players, stats }: { players: Player[]; stats: Record<stri
   const rows = players
     .map((p) => ({ p, s: stats[p.name] ?? emptyStats([p.name])[p.name] }))
     .filter((x) => x.s.games > 0)
-    .sort((a, b) => b.s.wins - a.s.wins || b.s.diff - a.s.diff || b.s.pointsFor - a.s.pointsFor);
+    .sort((a, b) => b.s.pointsFor - a.s.pointsFor || b.s.wins - a.s.wins || b.s.diff - a.s.diff);
   return (
     <section className="card">
       <div className="section">
@@ -516,7 +516,7 @@ function Leaderboard({ players, stats }: { players: Player[]; stats: Record<stri
               <th>G</th>
               <th>W-L</th>
               <th>DIFF</th>
-              <th>PF</th>
+              <th className="points-column" title="Total points scored">Point</th>
             </tr>
           </thead>
           <tbody>
@@ -532,7 +532,7 @@ function Leaderboard({ players, stats }: { players: Player[]; stats: Record<stri
                   {x.s.wins}-{x.s.losses}
                 </td>
                 <td className={x.s.diff >= 0 ? 'pos' : 'neg'}>{x.s.diff}</td>
-                <td>{x.s.pointsFor}</td>
+                <td className="points-column">{x.s.pointsFor}</td>
               </tr>
             ))}
           </tbody>
