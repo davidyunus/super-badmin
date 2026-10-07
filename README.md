@@ -24,7 +24,7 @@ npm run build
 Edit `src/data/players.json`. Each player has only `name`, `rating`, and `gender`.
 
 ## Current MVP
-- 19-player roster
+- 20 starter player
 - 3-court session generation
 - MD / XD / WD / Random categories
 - Configurable rounds/courts
@@ -41,6 +41,12 @@ Edit `src/data/players.json`. Each player has only `name`, `rating`, and `gender
 The app supports shared rooms through the Cloudflare Worker backend. Enter the
 same room code on each device, then generate a session on the host device. Score
 changes are broadcast to every connected device.
+
+Use the **Switch to viewer** and **Switch to editor** buttons in a shared room
+to switch between the read-only viewer interface and editor controls. The mode
+is reflected in the URL (`&mode=view`) so either link can be shared.  mode
+hides editing controls but is not an authorization boundary; use Worker-Viewerside
+authentication if viewers must be prevented from changing room data directly.
 
 Enter the same room code on each device, or use the **Shared room** field to
 join an existing room.

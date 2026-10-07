@@ -54,6 +54,15 @@ header small {
   padding: 7px 11px;
   border-radius: 8px;
 }
+.mode-toggle {
+  margin-right: 8px;
+  padding: 7px 10px;
+  border: 1px solid #6b7280;
+  border-radius: 8px;
+  background: transparent;
+  color: #f3f4f6;
+  font-size: 12px;
+}
 .reschedule {
   background: transparent;
   border: 1px solid #9ca3af;
@@ -285,6 +294,10 @@ input {
   font-weight: 800;
   margin: 0;
   padding: 8px;
+}
+.score input:read-only {
+  background: #f9fafb;
+  color: #374151;
 }
 .round-nav {
   position: fixed;

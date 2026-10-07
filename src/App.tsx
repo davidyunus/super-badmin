@@ -64,6 +64,9 @@ function statsForMatches(ms: Match[], players: Player[]) {
   return s;
 }
 export default function App() {
+  const [viewerMode, setViewerMode] = useState(
+    () => new URLSearchParams(location.search).get('mode') === 'view'
+  );
   const [session, setSession] = useState<Session | null>(() =>
     new URLSearchParams(location.search).get('room')?.trim() ? null : loadSession()
   );
@@ -109,7 +112,7 @@ export default function App() {
         stats: statsForMatches(message.value.matches, nextPlayers),
       };
       setPlayers(nextPlayers);
-      savePlayers(nextPlayers);
+      if (!viewerMode) savePlayers(nextPlayers);
       setSession(next);
     };
     connection.onerror = () => {
@@ -124,7 +127,7 @@ export default function App() {
       connection.close();
       if (socket.current === connection) socket.current = null;
     };
-  }, [roomId]);
+  }, [roomId, viewerMode]);
   const sendLive = (message: LiveMessage) => {
     if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify(message));
   };
@@ -182,7 +185,19 @@ export default function App() {
       clearLegacySession();
       setRoomId(nextRoom);
     }
-    history.replaceState(null, '', `?room=${encodeURIComponent(nextRoom)}`);
+    const nextUrl = new URL(location.href);
+    nextUrl.searchParams.set('room', nextRoom);
+    if (viewerMode) nextUrl.searchParams.set('mode', 'view');
+    else nextUrl.searchParams.delete('mode');
+    history.replaceState(null, '', nextUrl);
+  };
+  const toggleViewerMode = () => {
+    const nextViewerMode = !viewerMode;
+    const url = new URL(location.href);
+    if (nextViewerMode) url.searchParams.set('mode', 'view');
+    else url.searchParams.delete('mode');
+    history.replaceState(null, '', url);
+    setViewerMode(nextViewerMode);
   };
   const reset = () => {
     if (confirm('Reset current session?')) {
@@ -250,9 +265,14 @@ export default function App() {
           <small>Casual badminton matchmaker</small>
         </div>
         <div className="live-status">
-          {roomId ? `${liveStatus} · ${roomId}` : 'Local session'}
+          {viewerMode ? `Viewer · ${roomId || 'Local session'}` : roomId ? `${liveStatus} · ${roomId}` : 'Editor · Local session'}
         </div>
-        {session && (
+        {roomId.trim() && (
+          <button className="mode-toggle" onClick={toggleViewerMode}>
+            Switch to {viewerMode ? 'editor' : 'viewer'}
+          </button>
+        )}
+        {!viewerMode && session && (
           <>
             <button
               className="reschedule"
@@ -282,75 +302,91 @@ export default function App() {
         ))}
       </nav>
       <main className={visibleSession && tab === 'schedule' ? 'has-round-nav' : ''}>
-        <div className="room-controls card">
-          <label>
-            Shared room
-            <input value={roomInput} placeholder="e.g. friday-night" onChange={(e) => setRoomInput(e.target.value)} />
-          </label>
-          <button onClick={joinRoom}>Join room</button>
-        </div>
-        {!session && (
-          <section className="card setup">
-            <h1>Create session</h1>
-            <p>
-              {activePlayers(players).length} players · {courts} courts · doubles only. Rating balance is prioritized, then
-              partner/opponent variety and playing load. Random allows any player pairing.
-            </p>
-            <div className="grid">
-              <label>
-                Rounds
-                <input
-                  type="number"
-                  min="1"
-                  max="40"
-                  value={rounds}
-                  onChange={(e) => setRounds(+e.target.value)}
-                />
-              </label>
-              <label>
-                Courts
-                <input
-                  type="number"
-                  min="1"
-                  max="6"
-                  value={courts}
-                  onChange={(e) => setCourts(+e.target.value)}
-                />
-              </label>
-            </div>
+        {!viewerMode && (
+          <div className="room-controls card">
             <label>
-              Categories
-              <div className="chips">
-                {cats.map((c) => (
-                  <button
-                    key={c}
-                    className={selected.includes(c) ? 'chip on' : 'chip'}
-                    onClick={() =>
-                      setSelected((x) => (x.includes(c) ? x.filter((y) => y !== c) : [...x, c]))
-                    }
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
+              Shared room
+              <input value={roomInput} placeholder="e.g. friday-night" onChange={(e) => setRoomInput(e.target.value)} />
             </label>
-            <button
-              className="primary"
-              disabled={!selected.length || (!!roomId.trim() && liveStatus !== 'connected')}
-              onClick={generate}
-            >
-              Generate {rounds * courts} games
-            </button>
-          </section>
+            <button onClick={joinRoom}>Join room</button>
+          </div>
+        )}
+        {!session && (
+          viewerMode ? (
+            <section className="card setup">
+              <h1>No active session</h1>
+              <p>There is no schedule in this room yet. The session will appear here when the editor creates one.</p>
+            </section>
+          ) : (
+            <section className="card setup">
+              <h1>Create session</h1>
+              <p>
+                {activePlayers(players).length} players · {courts} courts · doubles only. Rating balance is prioritized, then
+                partner/opponent variety and playing load. Random allows any player pairing.
+              </p>
+              <div className="grid">
+                <label>
+                  Rounds
+                  <input
+                    type="number"
+                    min="1"
+                    max="40"
+                    value={rounds}
+                    onChange={(e) => setRounds(+e.target.value)}
+                  />
+                </label>
+                <label>
+                  Courts
+                  <input
+                    type="number"
+                    min="1"
+                    max="6"
+                    value={courts}
+                    onChange={(e) => setCourts(+e.target.value)}
+                  />
+                </label>
+              </div>
+              <label>
+                Categories
+                <div className="chips">
+                  {cats.map((c) => (
+                    <button
+                      key={c}
+                      className={selected.includes(c) ? 'chip on' : 'chip'}
+                      onClick={() =>
+                        setSelected((x) => (x.includes(c) ? x.filter((y) => y !== c) : [...x, c]))
+                      }
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </label>
+              <button
+                className="primary"
+                disabled={!selected.length || (!!roomId.trim() && liveStatus !== 'connected')}
+                onClick={generate}
+              >
+                Generate {rounds * courts} games
+              </button>
+            </section>
+          )
         )}
         {visibleSession && tab === 'schedule' && (
           <>
             <RoundNavigator matches={visibleSession.matches} />
-            <Schedule session={visibleSession} onScore={score} />
+            <Schedule session={visibleSession} onScore={score} readOnly={viewerMode} />
           </>
         )}{' '}
         {visibleSession && tab === 'leaderboard' && <Leaderboard players={players} stats={visibleSession.stats} />}{' '}
-        {tab === 'players' && <Players players={players} onChange={updatePlayers} hasSession={!!session} />}
+        {tab === 'players' && (
+          <Players
+            players={players}
+            onChange={updatePlayers}
+            hasSession={!!session}
+            readOnly={viewerMode}
+          />
+        )}
       </main>
     </div>
   );
@@ -358,9 +394,11 @@ export default function App() {
 function Schedule({
   session,
   onScore,
+  readOnly,
 }: {
   session: Session;
   onScore: (id: string, a: number, b: number) => void;
+  readOnly: boolean;
 }) {
   const rounds = useMemo(() => {
     const m = new Map<number, Match[]>();
@@ -395,7 +433,7 @@ function Schedule({
           </div>
           <div className="courts">
             {ms.map((m) => (
-              <MatchCard key={m.id} match={m} onScore={onScore} />
+              <MatchCard key={m.id} match={m} onScore={onScore} readOnly={readOnly} />
             ))}
           </div>
         </section>
@@ -429,9 +467,11 @@ function RoundNavigator({ matches }: { matches: Match[] }) {
 function MatchCard({
   match,
   onScore,
+  readOnly,
 }: {
   match: Match;
   onScore: (id: string, a: number, b: number) => void;
+  readOnly: boolean;
 }) {
   const [a, setA] = useState(match.scoreA?.toString() ?? '');
   const [b, setB] = useState(match.scoreB?.toString() ?? '');
@@ -477,6 +517,8 @@ function MatchCard({
           inputMode="numeric"
           value={a}
           placeholder="0"
+          readOnly={readOnly}
+          aria-label={`Team A score, ${match.teamA.join(' and ')} versus ${match.teamB.join(' and ')}`}
           onChange={(e) => {
             setA(e.target.value);
             updateScore(e.target.value, b);
@@ -487,6 +529,8 @@ function MatchCard({
           inputMode="numeric"
           value={b}
           placeholder="0"
+          readOnly={readOnly}
+          aria-label={`Team B score, ${match.teamB.join(' and ')} versus ${match.teamA.join(' and ')}`}
           onChange={(e) => {
             setB(e.target.value);
             updateScore(a, e.target.value);
@@ -545,10 +589,12 @@ function Players({
   players,
   onChange,
   hasSession,
+  readOnly,
 }: {
   players: Player[];
   onChange: (players: Player[]) => void;
   hasSession: boolean;
+  readOnly: boolean;
 }) {
   const update = (index: number, changes: Partial<Player>) =>
     onChange(players.map((player, i) => (i === index ? { ...player, ...changes } : player)));
@@ -561,43 +607,53 @@ function Players({
     <section className="card">
       <div className="section">
         <h1>Players</h1>
-        <p>Changes are saved in this browser and apply when you generate or reschedule a session.</p>
-        {hasSession && <p className="notice">Completed matches stay unchanged. Use Reschedule to update unplayed games after changing player availability.</p>}
+        <p>
+          {readOnly
+            ? 'Viewing the player roster. Only the editor can make changes.'
+            : 'Changes are saved in this browser and apply when you generate or reschedule a session.'}
+        </p>
+        {!readOnly && hasSession && <p className="notice">Completed matches stay unchanged. Use Reschedule to update unplayed games after changing player availability.</p>}
       </div>
       <div className="players">
         {players.map((p, index) => (
           <div key={index} className="player-row">
             <strong aria-label={`Player number ${index + 1}`}>{index + 1}</strong>
             <span>
-              <input aria-label={`Player ${index + 1} name`} value={p.name} onChange={(e) => update(index, { name: e.target.value })} />
+              <input aria-label={`Player ${index + 1} name`} value={p.name} readOnly={readOnly} onChange={(e) => update(index, { name: e.target.value })} />
               <small>{p.gender === 'F' ? 'Female' : 'Male'}</small>
             </span>
             <label>
               Rating
-              <input type="number" min="1" max="5" value={p.rating} onChange={(e) => update(index, { rating: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })} />
+              <input type="number" min="1" max="5" value={p.rating} readOnly={readOnly} onChange={(e) => update(index, { rating: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })} />
             </label>
             <label>
               Gender
-              <select value={p.gender} onChange={(e) => update(index, { gender: e.target.value as Player['gender'] })}>
+              <select value={p.gender} disabled={readOnly} onChange={(e) => update(index, { gender: e.target.value as Player['gender'] })}>
                 <option value="M">Male</option>
                 <option value="F">Female</option>
               </select>
             </label>
-            <button
-              className={p.disabled ? 'toggle inactive' : 'toggle'}
-              onClick={() => update(index, { disabled: !p.disabled })}
-            >
-              {p.disabled ? 'Disabled' : 'Active'}
-            </button>
-            <button className="remove" aria-label={`Remove ${p.name || 'player'}`} onClick={() => remove(index)}>Remove</button>
+            {!readOnly && (
+              <>
+                <button
+                  className={p.disabled ? 'toggle inactive' : 'toggle'}
+                  onClick={() => update(index, { disabled: !p.disabled })}
+                >
+                  {p.disabled ? 'Disabled' : 'Active'}
+                </button>
+                <button className="remove" aria-label={`Remove ${p.name || 'player'}`} onClick={() => remove(index)}>Remove</button>
+              </>
+            )}
           </div>
         ))}
       </div>
-      <div className="section player-actions">
-        <button className="primary" onClick={() => onChange([...players, { name: 'New player', rating: 3, gender: 'M' }])}>
-          Add player
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="section player-actions">
+          <button className="primary" onClick={() => onChange([...players, { name: 'New player', rating: 3, gender: 'M' }])}>
+            Add player
+          </button>
+        </div>
+      )}
     </section>
   );
 }
