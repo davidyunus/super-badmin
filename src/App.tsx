@@ -16,6 +16,16 @@ const cats: Category[] = ['MD', 'XD', 'WD', 'Random'];
 function activePlayers(players: Player[]) {
   return players.filter((p) => !p.disabled);
 }
+function isMatchPlayed(
+  match: Match
+): match is Match & { scoreA: number; scoreB: number } {
+  return (
+    match.scoreA != null &&
+    match.scoreA > 0 &&
+    match.scoreB != null &&
+    match.scoreB > 0
+  );
+}
 function baseMatchesWithScores(session: Session): Match[] {
   const scoredMatches = new Map(session.matches.map((match) => [match.id, match]));
   return (session.baseMatches ?? session.matches).map((match) => {
@@ -30,7 +40,7 @@ function pruneInactivePlayers(session: Session, players: Player[]): Session {
   const activeNames = new Set(activePlayers(players).map((p) => p.name));
   const matches = baseMatches
     .map((match) => {
-      if (match.scoreA != null && match.scoreB != null) return match;
+      if (isMatchPlayed(match)) return match;
       const teamA = match.teamA.filter((name) => activeNames.has(name)) as [string, string];
       const teamB = match.teamB.filter((name) => activeNames.has(name)) as [string, string];
       if (teamA.length < 2 || teamB.length < 2) return null;
@@ -44,7 +54,7 @@ function statsForMatches(ms: Match[], players: Player[]) {
   ms.forEach((m) => [...m.teamA, ...m.teamB].forEach((name) => names.add(name)));
   const s = emptyStats([...names]);
   for (const m of ms) {
-    if (m.scoreA == null || m.scoreB == null) continue;
+    if (!isMatchPlayed(m)) continue;
     const aw = m.scoreA > m.scoreB;
     for (const n of m.teamA) {
       s[n].games++;
@@ -212,10 +222,10 @@ export default function App() {
   const reschedule = () => {
     if (!session || !confirm('Reschedule all unplayed matches? Completed scores will be kept.')) return;
     const baseMatches = baseMatchesWithScores(session);
-    const completed = baseMatches.filter((match) => match.scoreA != null && match.scoreB != null);
+    const completed = baseMatches.filter(isMatchPlayed);
     const firstPendingRound = Math.min(
       ...baseMatches
-        .filter((match) => match.scoreA == null || match.scoreB == null)
+        .filter((match) => !isMatchPlayed(match))
         .map((match) => match.round),
       session.rounds
     );
@@ -241,13 +251,13 @@ export default function App() {
   const visibleSession = useMemo(() => (session ? pruneInactivePlayers(session, players) : null), [session, players]);
   const hasUnplayedMatches = !!session &&
     (session.baseMatches ?? session.matches).some(
-      (match) => match.scoreA == null || match.scoreB == null
+      (match) => !isMatchPlayed(match)
     );
   useEffect(() => {
     if (!visibleSession || tab !== 'schedule' || didInitialScheduleScroll.current) return;
     didInitialScheduleScroll.current = true;
     const firstUnscored = visibleSession.matches.find(
-      (match) => match.scoreA == null || match.scoreB == null
+      (match) => !isMatchPlayed(match)
     );
     if (!firstUnscored) return;
     requestAnimationFrame(() => {
@@ -408,7 +418,7 @@ function Schedule({
     });
     return [...m];
   }, [session]);
-  const done = session.matches.filter((m) => m.scoreA != null && m.scoreB != null).length;
+  const done = session.matches.filter(isMatchPlayed).length;
   return (
     <>
       <div className="card summary">
