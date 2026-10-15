@@ -23,6 +23,6 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "prettier": "^3.9.6",
-    "wrangler": "^4.127.0"
+    "wrangler": "^4.151.0"
   }
 }
