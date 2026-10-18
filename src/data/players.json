@@ -5,57 +5,32 @@
     "gender": "M"
   },
   {
-    "name": "Ilham",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "Winardi",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "Ivan",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "Luci",
-    "rating": 2,
-    "gender": "F"
-  },
-  {
-    "name": "Joan",
-    "rating": 2,
-    "gender": "F"
-  },
-  {
-    "name": "Geby",
-    "rating": 2,
-    "gender": "F"
-  },
-  {
-    "name": "HenryF",
-    "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "Handy D",
+    "name": "Dwi",
     "rating": 4,
     "gender": "M"
   },
   {
-    "name": "Fernaldi",
+    "name": "zulfadli",
     "rating": 4,
     "gender": "M"
   },
   {
-    "name": "Dedy",
+    "name": "Felix",
+    "rating": 5,
+    "gender": "M"
+  },
+  {
+    "name": "Nata",
     "rating": 3,
     "gender": "M"
   },
   {
-    "name": "Brandon",
+    "name": "Tedi",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "MC",
     "rating": 3,
     "gender": "M"
   },
@@ -65,18 +40,18 @@
     "gender": "M"
   },
   {
+    "name": "Novia",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "Jessica",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
     "name": "Daniel",
     "rating": 3,
-    "gender": "M"
-  },
-  {
-    "name": "zulfadli",
-    "rating": 4,
-    "gender": "M"
-  },
-  {
-    "name": "Rian",
-    "rating": 5,
     "gender": "M"
   },
   {
@@ -85,18 +60,123 @@
     "gender": "M"
   },
   {
-    "name": "Kevin",
+    "name": "Fernaldi",
     "rating": 3,
     "gender": "M"
   },
   {
-    "name": "WB",
+    "name": "Gaby",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "wb",
     "rating": 3,
     "gender": "M"
   },
   {
-    "name": "David",
+    "name": "Handy D",
     "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "kukuh",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Kirana",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "Metta",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "Ilham R",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Naufal Y",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Luci",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "David Y",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "Joanna",
+    "rating": 2,
+    "gender": "F"
+  },
+  {
+    "name": "Jason",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Dhana",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Tomi",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Tama",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Aristo",
+    "rating": 4,
+    "gender": "M"
+  },
+  {
+    "name": "Dedy",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Erico",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Sang Aji Sungkowo",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Zulfa",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Lutfi",
+    "rating": 3,
+    "gender": "M"
+  },
+  {
+    "name": "Rian",
+    "rating": 5,
+    "gender": "M"
+  },
+  {
+    "name": "Mario",
+    "rating": 3,
     "gender": "M"
   }
 ]
