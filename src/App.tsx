@@ -7,9 +7,7 @@ import {
   clearLegacySession,
   clearSession,
   emptyStats,
-  loadPlayers,
   loadSession,
-  savePlayers,
   saveSession,
 } from './utils/storage';
 const cats: Category[] = ['MD', 'XD', 'WD', 'Random'];
@@ -80,7 +78,9 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(() =>
     new URLSearchParams(location.search).get('room')?.trim() ? null : loadSession()
   );
-  const [players, setPlayers] = useState<Player[]>(() => loadPlayers(playersData as Player[]));
+  const [players, setPlayers] = useState<Player[]>(
+    () => session?.players ?? (playersData as Player[])
+  );
   const [rounds, setRounds] = useState(20);
   const [courts, setCourts] = useState(3);
   const [selected, setSelected] = useState<Category[]>(cats);
@@ -89,8 +89,6 @@ export default function App() {
   const [roomInput, setRoomInput] = useState(() => new URLSearchParams(location.search).get('room') ?? '');
   const [liveStatus, setLiveStatus] = useState<LiveStatus>('disconnected');
   const socket = useRef<WebSocket | null>(null);
-  const playersRef = useRef(players);
-  playersRef.current = players;
   const didInitialScheduleScroll = useRef(false);
   useEffect(() => {
     if (!roomId.trim()) {
@@ -110,11 +108,12 @@ export default function App() {
       const message = JSON.parse(event.data) as { type: string; value?: Session | null };
       if (message.type !== 'state') return;
       if (!message.value) {
+        setPlayers(playersData as Player[]);
         setSession(null);
         return;
       }
       const baseMatches = message.value.baseMatches ?? message.value.matches;
-      const nextPlayers = message.value.players ?? playersRef.current;
+      const nextPlayers = message.value.players ?? (playersData as Player[]);
       const next = {
         ...message.value,
         players: nextPlayers,
@@ -122,7 +121,6 @@ export default function App() {
         stats: statsForMatches(message.value.matches, nextPlayers),
       };
       setPlayers(nextPlayers);
-      if (!viewerMode) savePlayers(nextPlayers);
       setSession(next);
     };
     connection.onerror = () => {
@@ -149,7 +147,6 @@ export default function App() {
   };
   const updatePlayers = (next: Player[]) => {
     setPlayers(next);
-    savePlayers(next);
     if (session) {
       const merged = { ...session, players: next };
       setSession(merged);
@@ -620,7 +617,7 @@ function Players({
         <p>
           {readOnly
             ? 'Viewing the player roster. Only the editor can make changes.'
-            : 'Changes are saved in this browser and apply when you generate or reschedule a session.'}
+            : 'Roster changes are saved with the session. New rooms start with the currently deployed roster.'}
         </p>
         {!readOnly && hasSession && <p className="notice">Completed matches stay unchanged. Use Reschedule to update unplayed games after changing player availability.</p>}
       </div>

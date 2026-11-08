@@ -6,7 +6,7 @@ Badminton session scheduler with optional shared live scoring.
 - React + TypeScript
 - Vite
 - JSON roster
-- localStorage for local sessions/results and player preferences
+- localStorage for local sessions/results
 - Cloudflare Worker + Durable Object for shared live sessions
 
 ## Run
@@ -60,10 +60,12 @@ npm run dev
 
 The deployed frontend uses the live Worker automatically. To use another Worker URL, set `VITE_LIVE_API_URL` before building.
 
-Shared room state is stored by the Worker and is authoritative while a room is
-joined. Resetting a shared session clears that room for every connected device.
-Local sessions and player preferences remain in localStorage; shared sessions
-are not cached there.
+Shared room state, including that room's player roster, is stored by the Worker
+and is authoritative while a room is joined. A new room starts with the roster
+from the currently deployed `src/data/players.json`; reopening an existing room
+uses the roster saved with that room's session. Resetting a shared session
+clears that room for every connected device. Local sessions and their player
+rosters remain in localStorage; shared sessions are not cached there.
 
 Worker commands:
 
