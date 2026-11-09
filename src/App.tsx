@@ -271,7 +271,7 @@ export default function App() {
           <b>🏸 SUPER-BADMIN</b>
           <small>Casual badminton matchmaker</small>
         </div>
-        <div className="live-status">
+        <div className={`live-status ${!viewerMode && roomId ? liveStatus : ''}`}>
           {viewerMode ? `Viewer · ${roomId || 'Local session'}` : roomId ? `${liveStatus} · ${roomId}` : 'Editor · Local session'}
         </div>
         <div className="header-actions">

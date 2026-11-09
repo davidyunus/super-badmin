@@ -47,6 +47,12 @@ header small {
   font-size: 12px;
   text-transform: capitalize;
 }
+.live-status.connected {
+  color: #4ade80;
+}
+.live-status.disconnected {
+  color: #f87171;
+}
 .header-actions {
   display: flex;
   align-items: center;
