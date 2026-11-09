@@ -47,6 +47,10 @@ header small {
   font-size: 12px;
   text-transform: capitalize;
 }
+.header-actions {
+  display: flex;
+  align-items: center;
+}
 .danger {
   background: transparent;
   border: 1px solid #ef4444;
@@ -538,7 +542,22 @@ code {
     font-size: 18px;
   }
   .live-status {
-    display: none;
+    grid-area: status;
+    margin: 0;
+  }
+  header {
+    display: grid;
+    grid-template-areas:
+      'brand actions'
+      'status status';
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+  .brand {
+    grid-area: brand;
+  }
+  .header-actions {
+    grid-area: actions;
   }
   .room-controls {
     align-items: stretch;

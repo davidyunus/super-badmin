@@ -267,39 +267,41 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <div>
+        <div className="brand">
           <b>🏸 SUPER-BADMIN</b>
           <small>Casual badminton matchmaker</small>
         </div>
         <div className="live-status">
           {viewerMode ? `Viewer · ${roomId || 'Local session'}` : roomId ? `${liveStatus} · ${roomId}` : 'Editor · Local session'}
         </div>
-        {roomId.trim() && (
-          <button className="mode-toggle" onClick={toggleViewerMode}>
-            Switch to {viewerMode ? 'editor' : 'viewer'}
-          </button>
-        )}
-        {!viewerMode && session && (
-          <>
-            <button
-              className="reschedule"
-              onClick={reschedule}
-              disabled={
-                !hasUnplayedMatches ||
-                (!!roomId.trim() && liveStatus !== 'connected')
-              }
-            >
-              Reschedule
+        <div className="header-actions">
+          {roomId.trim() && (
+            <button className="mode-toggle" onClick={toggleViewerMode}>
+              Switch to {viewerMode ? 'editor' : 'viewer'}
             </button>
-            <button
-              className="danger"
-              onClick={reset}
-              disabled={!!roomId.trim() && liveStatus !== 'connected'}
-            >
-              Reset
-            </button>
-          </>
-        )}
+          )}
+          {!viewerMode && session && (
+            <>
+              <button
+                className="reschedule"
+                onClick={reschedule}
+                disabled={
+                  !hasUnplayedMatches ||
+                  (!!roomId.trim() && liveStatus !== 'connected')
+                }
+              >
+                Reschedule
+              </button>
+              <button
+                className="danger"
+                onClick={reset}
+                disabled={!!roomId.trim() && liveStatus !== 'connected'}
+              >
+                Reset
+              </button>
+            </>
+          )}
+        </div>
       </header>
       <nav>
         {(['schedule', 'leaderboard', 'players'] as const).map((x) => (
