@@ -4,7 +4,14 @@ export type LiveStatus = 'connecting' | 'connected' | 'disconnected';
 
 export type LiveMessage =
   | { type: 'replace'; value: Session | null }
-  | { type: 'score'; matchId: string; scoreA: number; scoreB: number };
+  | {
+      type: 'score';
+      requestId: string;
+      sessionId: string;
+      matchId: string;
+      scoreA: number;
+      scoreB: number;
+    };
 
 export function liveSocketUrl(roomId: string) {
   const configuredUrl =

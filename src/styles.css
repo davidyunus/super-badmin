@@ -53,6 +53,9 @@ header small {
 .live-status.disconnected {
   color: #f87171;
 }
+.live-status.sync-error {
+  color: #f87171;
+}
 .header-actions {
   display: flex;
   align-items: center;

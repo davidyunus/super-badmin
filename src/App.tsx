@@ -11,6 +11,52 @@ import {
   saveSession,
 } from './utils/storage';
 const cats: Category[] = ['MD', 'XD', 'WD', 'Random'];
+interface PendingScore {
+  requestId: string;
+  sessionId: string;
+  matchId: string;
+  scoreA: number;
+  scoreB: number;
+}
+function pendingScoresKey(roomId: string) {
+  return `super-badmin-pending-scores-v1:${roomId}`;
+}
+function isPendingScore(value: unknown): value is PendingScore {
+  if (!value || typeof value !== 'object') return false;
+  const score = value as Partial<PendingScore>;
+  return (
+    typeof score.requestId === 'string' &&
+    typeof score.sessionId === 'string' &&
+    typeof score.matchId === 'string' &&
+    typeof score.scoreA === 'number' &&
+    Number.isFinite(score.scoreA) &&
+    score.scoreA >= 0 &&
+    typeof score.scoreB === 'number' &&
+    Number.isFinite(score.scoreB) &&
+    score.scoreB >= 0
+  );
+}
+function sessionWithPendingScores(
+  session: Session,
+  pendingScores: PendingScore[],
+  players: Player[]
+): Session {
+  const scores = new Map(pendingScores.map((score) => [score.matchId, score]));
+  const applyScores = (matches: Match[]) =>
+    matches.map((match) => {
+      const score = scores.get(match.id);
+      return score?.sessionId === session.id
+        ? { ...match, scoreA: score.scoreA, scoreB: score.scoreB }
+        : match;
+    });
+  const matches = applyScores(session.matches);
+  return {
+    ...session,
+    matches,
+    baseMatches: applyScores(session.baseMatches ?? session.matches),
+    stats: statsForMatches(matches, players),
+  };
+}
 function activePlayers(players: Player[]) {
   return players.filter((p) => !p.disabled);
 }
@@ -88,56 +134,164 @@ export default function App() {
   const [roomId, setRoomId] = useState(() => new URLSearchParams(location.search).get('room') ?? '');
   const [roomInput, setRoomInput] = useState(() => new URLSearchParams(location.search).get('room') ?? '');
   const [liveStatus, setLiveStatus] = useState<LiveStatus>('disconnected');
+  const [pendingScoreCount, setPendingScoreCount] = useState(0);
+  const [syncError, setSyncError] = useState('');
+  const pendingScores = useRef<PendingScore[]>([]);
   const socket = useRef<WebSocket | null>(null);
   const didInitialScheduleScroll = useRef(false);
   useEffect(() => {
     if (!roomId.trim()) {
       setLiveStatus('disconnected');
+      setPendingScoreCount(0);
       return;
     }
     clearLegacySession();
     setSession(null);
-    setLiveStatus('connecting');
-    const connection = new WebSocket(liveSocketUrl(roomId.trim()));
-    socket.current = connection;
-    connection.onopen = () => {
-      if (socket.current === connection) setLiveStatus('connected');
-    };
-    connection.onmessage = (event) => {
-      if (socket.current !== connection) return;
-      const message = JSON.parse(event.data) as { type: string; value?: Session | null };
-      if (message.type !== 'state') return;
-      if (!message.value) {
-        setPlayers(playersData as Player[]);
-        setSession(null);
+    let disposed = false;
+    let reconnectTimer: number | undefined;
+    let reconnectAttempt = 0;
+    try {
+      const stored = localStorage.getItem(pendingScoresKey(roomId.trim()));
+      const parsed: unknown = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(parsed) || !parsed.every(isPendingScore)) {
+        throw new Error('Pending score data is invalid.');
+      }
+      pendingScores.current = parsed;
+      setPendingScoreCount(parsed.length);
+      setSyncError('');
+    } catch (error) {
+      pendingScores.current = [];
+      setPendingScoreCount(0);
+      setSyncError(
+        error instanceof Error ? `Could not restore unsynced scores: ${error.message}` : 'Could not restore unsynced scores.'
+      );
+    }
+    const connect = () => {
+      if (disposed) return;
+      setLiveStatus('connecting');
+      let connection: WebSocket;
+      try {
+        connection = new WebSocket(liveSocketUrl(roomId.trim()));
+      } catch (error) {
+        setSyncError(error instanceof Error ? error.message : 'Could not connect to the live session.');
+        scheduleReconnect();
         return;
       }
-      const baseMatches = message.value.baseMatches ?? message.value.matches;
-      const nextPlayers = message.value.players ?? (playersData as Player[]);
-      const next = {
-        ...message.value,
-        players: nextPlayers,
-        baseMatches,
-        stats: statsForMatches(message.value.matches, nextPlayers),
+      socket.current = connection;
+      let receivedInitialState = false;
+      connection.onopen = () => {
+        if (socket.current !== connection) return;
+        setLiveStatus('connected');
+        reconnectAttempt = 0;
       };
-      setPlayers(nextPlayers);
-      setSession(next);
+      connection.onmessage = (event) => {
+        if (socket.current !== connection) return;
+        let message: { type: string; value?: Session | null; requestId?: string; message?: string };
+        try {
+          message = JSON.parse(event.data) as typeof message;
+        } catch {
+          setSyncError('Received an unreadable response from the live session.');
+          return;
+        }
+        if (message.type === 'ack' && message.requestId) {
+          const nextPending = pendingScores.current.filter(
+            (score) => score.requestId !== message.requestId
+          );
+          pendingScores.current = nextPending;
+          setPendingScoreCount(nextPending.length);
+          try {
+            localStorage.setItem(pendingScoresKey(roomId.trim()), JSON.stringify(nextPending));
+            if (nextPending.length === 0) setSyncError('');
+          } catch (error) {
+            setSyncError(
+              error instanceof Error ? `Saved, but could not clear the local retry queue: ${error.message}` : 'Saved, but could not clear the local retry queue.'
+            );
+          }
+          return;
+        }
+        if (message.type === 'error') {
+          setSyncError(message.message || 'The live session rejected a score update.');
+          return;
+        }
+        if (message.type !== 'state') return;
+        if (!message.value) {
+          setPlayers(playersData as Player[]);
+          setSession(null);
+        } else {
+          const nextPlayers = message.value.players ?? (playersData as Player[]);
+          const next = sessionWithPendingScores(
+            message.value,
+            pendingScores.current,
+            nextPlayers
+          );
+          setPlayers(nextPlayers);
+          setSession(next);
+        }
+        if (!receivedInitialState) {
+          receivedInitialState = true;
+          for (const score of pendingScores.current) {
+            if (score.sessionId === message.value?.id) {
+              try {
+                connection.send(JSON.stringify({ type: 'score', ...score }));
+              } catch (error) {
+                setSyncError(
+                  error instanceof Error ? `Could not retry score: ${error.message}` : 'Could not retry score.'
+                );
+              }
+            }
+          }
+        }
+      };
+      connection.onerror = () => {
+        if (socket.current === connection) setLiveStatus('disconnected');
+      };
+      connection.onclose = () => {
+        if (socket.current !== connection) return;
+        socket.current = null;
+        setLiveStatus('disconnected');
+        scheduleReconnect();
+      };
     };
-    connection.onerror = () => {
-      if (socket.current === connection) setLiveStatus('disconnected');
+    const scheduleReconnect = () => {
+      if (disposed || reconnectTimer !== undefined) return;
+      const delay = Math.min(1000 * 2 ** reconnectAttempt, 30000);
+      reconnectAttempt++;
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = undefined;
+        connect();
+      }, delay);
     };
-    connection.onclose = () => {
-      if (socket.current !== connection) return;
-      socket.current = null;
-      setLiveStatus('disconnected');
-    };
+    connect();
     return () => {
-      connection.close();
-      if (socket.current === connection) socket.current = null;
+      disposed = true;
+      if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
+      socket.current?.close();
+      socket.current = null;
     };
   }, [roomId, viewerMode]);
   const sendLive = (message: LiveMessage) => {
     if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify(message));
+  };
+  const queueLiveScore = (score: PendingScore) => {
+    const nextPending = [...pendingScores.current, score];
+    pendingScores.current = nextPending;
+    setPendingScoreCount(nextPending.length);
+    try {
+      localStorage.setItem(pendingScoresKey(roomId.trim()), JSON.stringify(nextPending));
+    } catch (error) {
+      setSyncError(
+        error instanceof Error ? `Score is not safely queued for retry: ${error.message}` : 'Score is not safely queued for retry.'
+      );
+    }
+    if (socket.current?.readyState === WebSocket.OPEN) {
+      try {
+        socket.current.send(JSON.stringify({ type: 'score', ...score }));
+      } catch (error) {
+        setSyncError(
+          error instanceof Error ? `Could not send score: ${error.message}` : 'Could not send score.'
+        );
+      }
+    }
   };
   const save = (s: Session) => {
     const full = { ...s, players, baseMatches: s.baseMatches ?? s.matches };
@@ -181,7 +335,15 @@ export default function App() {
     };
     setSession(next);
     if (!roomId.trim()) saveSession(next);
-    sendLive({ type: 'score', matchId: id, scoreA: a, scoreB: b });
+    if (roomId.trim()) {
+      queueLiveScore({
+        requestId: crypto.randomUUID(),
+        sessionId: session.id,
+        matchId: id,
+        scoreA: a,
+        scoreB: b,
+      });
+    }
   };
   const joinRoom = () => {
     const nextRoom = roomInput.trim().replace(/[^A-Za-z0-9_-]/g, '');
@@ -250,6 +412,11 @@ export default function App() {
     (session.baseMatches ?? session.matches).some(
       (match) => !isMatchPlayed(match)
     );
+  const liveStatusText = viewerMode
+    ? `Viewer · ${roomId || 'Local session'}`
+    : roomId
+      ? `${liveStatus} · ${roomId}${pendingScoreCount ? ` · ${pendingScoreCount} unsynced` : ''}${syncError ? ' · save error' : ''}`
+      : 'Editor · Local session';
   useEffect(() => {
     if (!visibleSession || tab !== 'schedule' || didInitialScheduleScroll.current) return;
     didInitialScheduleScroll.current = true;
@@ -271,8 +438,11 @@ export default function App() {
           <b>🏸 SUPER-BADMIN</b>
           <small>Casual badminton matchmaker</small>
         </div>
-        <div className={`live-status ${!viewerMode && roomId ? liveStatus : ''}`}>
-          {viewerMode ? `Viewer · ${roomId || 'Local session'}` : roomId ? `${liveStatus} · ${roomId}` : 'Editor · Local session'}
+        <div
+          className={`live-status ${!viewerMode && roomId ? liveStatus : ''}${syncError ? ' sync-error' : ''}`}
+          title={syncError || undefined}
+        >
+          {liveStatusText}
         </div>
         <div className="header-actions">
           {roomId.trim() && (

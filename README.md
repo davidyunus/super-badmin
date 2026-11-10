@@ -51,6 +51,11 @@ authentication if viewers must be prevented from changing room data directly.
 Enter the same room code on each device, or use the **Shared room** field to
 join an existing room.
 
+Shared score changes are kept in the editor's browser until the Worker confirms
+they have been saved. Unconfirmed changes are retried after reconnecting and
+shown as unsynced in the connection status. Deploy the updated Worker and
+frontend together for this behavior.
+
 For local development, run the Worker and frontend in separate terminals:
 
 ```bash

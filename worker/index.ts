@@ -5,11 +5,19 @@ interface Env {
 interface RoomState {
   value: unknown;
   updatedAt: string;
+  processedScoreIds?: string[];
 }
 
 type ClientMessage =
   | { type: 'replace'; value: unknown }
-  | { type: 'score'; matchId: string; scoreA: number; scoreB: number };
+  | {
+      type: 'score';
+      requestId: string;
+      sessionId: string;
+      matchId: string;
+      scoreA: number;
+      scoreB: number;
+    };
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -53,7 +61,11 @@ export class SessionRoom {
 
     const stored = await this.state.storage.get<RoomState>('room');
     server.send(
-      JSON.stringify(stored ? { type: 'state', ...stored } : { type: 'state', value: null })
+      JSON.stringify(
+        stored
+          ? { type: 'state', value: stored.value, updatedAt: stored.updatedAt }
+          : { type: 'state', value: null }
+      )
     );
 
     return new Response(null, { status: 101, webSocket: client });
@@ -67,7 +79,21 @@ export class SessionRoom {
         return;
       }
       if (message.type === 'score') {
-        await this.updateScore(message);
+        if (
+          typeof message.requestId !== 'string' ||
+          message.requestId.length === 0 ||
+          message.requestId.length > 128 ||
+          typeof message.sessionId !== 'string' ||
+          typeof message.matchId !== 'string' ||
+          !Number.isFinite(message.scoreA) ||
+          !Number.isFinite(message.scoreB) ||
+          message.scoreA < 0 ||
+          message.scoreB < 0
+        ) {
+          socket.send(JSON.stringify({ type: 'error', message: 'Invalid score update' }));
+          return;
+        }
+        await this.updateScore(socket, message);
         return;
       }
       socket.send(JSON.stringify({ type: 'error', message: 'Unknown message type' }));
@@ -77,29 +103,86 @@ export class SessionRoom {
   }
 
   private async replace(value: unknown) {
-    const room = { value, updatedAt: new Date().toISOString() } satisfies RoomState;
-    await this.state.storage.put('room', room);
-    this.broadcast({ type: 'state', ...room });
+    const room = await this.state.storage.transaction(async (transaction) => {
+      const current = await transaction.get<RoomState>('room');
+      const next = {
+        value,
+        updatedAt: new Date().toISOString(),
+        processedScoreIds: current?.processedScoreIds ?? [],
+      } satisfies RoomState;
+      await transaction.put('room', next);
+      return next;
+    });
+    this.broadcast({ type: 'state', value: room.value, updatedAt: room.updatedAt });
   }
 
-  private async updateScore(message: Extract<ClientMessage, { type: 'score' }>) {
-    const room = await this.state.storage.get<RoomState>('room');
-    if (!room || !isSessionValue(room.value)) return;
+  private async updateScore(
+    socket: WebSocket,
+    message: Extract<ClientMessage, { type: 'score' }>
+  ) {
+    const result = await this.state.storage.transaction(async (transaction) => {
+      const room = await transaction.get<RoomState>('room');
+      if (!room || !isSessionValue(room.value) || room.value.id !== message.sessionId) {
+        return {
+          room: null,
+          duplicate: false,
+          error: 'The room session changed before this score was saved.',
+        };
+      }
+      const processedScoreIds = room.processedScoreIds ?? [];
+      if (processedScoreIds.includes(message.requestId)) {
+        return { room, duplicate: true, error: null };
+      }
+      if (!room.value.matches.some((match) => match.id === message.matchId)) {
+        return {
+          room: null,
+          duplicate: false,
+          error: 'This match is no longer in the room schedule.',
+        };
+      }
 
-    const updateMatches = (matches: Array<{ id: string }>) =>
-      matches.map((match) =>
-        match.id === message.matchId
-          ? { ...match, scoreA: message.scoreA, scoreB: message.scoreB }
-          : match
+      const updateMatches = (matches: Array<{ id: string }>) =>
+        matches.map((match) =>
+          match.id === message.matchId
+            ? { ...match, scoreA: message.scoreA, scoreB: message.scoreB }
+            : match
+        );
+      const value = {
+        ...room.value,
+        matches: updateMatches(room.value.matches),
+        ...(Array.isArray(room.value.baseMatches)
+          ? { baseMatches: updateMatches(room.value.baseMatches) }
+          : {}),
+      };
+      const nextRoom = {
+        ...room,
+        value,
+        updatedAt: new Date().toISOString(),
+        processedScoreIds: [...processedScoreIds, message.requestId].slice(-1000),
+      } satisfies RoomState;
+      await transaction.put('room', nextRoom);
+      return { room: nextRoom, duplicate: false, error: null };
+    });
+
+    if (!result.room) {
+      socket.send(
+        JSON.stringify({
+          type: 'error',
+          requestId: message.requestId,
+          message: result.error,
+        })
       );
-    const value = {
-      ...room.value,
-      matches: updateMatches(room.value.matches),
-      ...(Array.isArray(room.value.baseMatches)
-        ? { baseMatches: updateMatches(room.value.baseMatches) }
-        : {}),
-    };
-    await this.replace(value);
+      return;
+    }
+
+    socket.send(JSON.stringify({ type: 'ack', requestId: message.requestId }));
+    if (!result.duplicate) {
+      this.broadcast({
+        type: 'state',
+        value: result.room.value,
+        updatedAt: result.room.updatedAt,
+      });
+    }
   }
 
   private broadcast(message: unknown) {
@@ -116,10 +199,16 @@ export class SessionRoom {
 
 function isSessionValue(
   value: unknown
-): value is { matches: Array<{ id: string }>; baseMatches?: Array<{ id: string }> } {
+): value is {
+  id: string;
+  matches: Array<{ id: string }>;
+  baseMatches?: Array<{ id: string }>;
+} {
   return (
     typeof value === 'object' &&
     value !== null &&
+    'id' in value &&
+    typeof value.id === 'string' &&
     'matches' in value &&
     Array.isArray(value.matches)
   );
