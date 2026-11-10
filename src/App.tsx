@@ -413,7 +413,9 @@ export default function App() {
       (match) => !isMatchPlayed(match)
     );
   const liveStatusText = viewerMode
-    ? `Viewer · ${roomId || 'Local session'}`
+    ? roomId
+      ? `Viewer · ${liveStatus} · ${roomId}`
+      : 'Viewer · Local session'
     : roomId
       ? `${liveStatus} · ${roomId}${pendingScoreCount ? ` · ${pendingScoreCount} unsynced` : ''}${syncError ? ' · save error' : ''}`
       : 'Editor · Local session';
@@ -439,7 +441,7 @@ export default function App() {
           <small>Casual badminton matchmaker</small>
         </div>
         <div
-          className={`live-status ${!viewerMode && roomId ? liveStatus : ''}${syncError ? ' sync-error' : ''}`}
+          className={`live-status ${roomId ? liveStatus : ''}${!viewerMode && syncError ? ' sync-error' : ''}`}
           title={syncError || undefined}
         >
           {liveStatusText}
