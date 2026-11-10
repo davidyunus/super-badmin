@@ -10,6 +10,7 @@ interface RoomState {
 
 type ClientMessage =
   | { type: 'replace'; value: unknown }
+  | { type: 'ping' }
   | {
       type: 'score';
       requestId: string;
@@ -74,6 +75,10 @@ export class SessionRoom {
   private async handleMessage(socket: WebSocket, raw: string) {
     try {
       const message = JSON.parse(raw) as ClientMessage;
+      if (message.type === 'ping') {
+        socket.send(JSON.stringify({ type: 'pong' }));
+        return;
+      }
       if (message.type === 'replace') {
         await this.replace(message.value);
         return;

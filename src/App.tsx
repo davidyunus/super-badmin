@@ -11,6 +11,9 @@ import {
   saveSession,
 } from './utils/storage';
 const cats: Category[] = ['MD', 'XD', 'WD', 'Random'];
+const CONNECTION_TIMEOUT_MS = 15_000;
+const HEARTBEAT_INTERVAL_MS = 20_000;
+const HEARTBEAT_TIMEOUT_MS = 15_000;
 interface PendingScore {
   requestId: string;
   sessionId: string;
@@ -179,10 +182,44 @@ export default function App() {
       }
       socket.current = connection;
       let receivedInitialState = false;
+      let heartbeatInterval: number | undefined;
+      let heartbeatTimeout: number | undefined;
+      const connectionTimeout = window.setTimeout(() => {
+        if (connection.readyState === WebSocket.CONNECTING) {
+          setLiveStatus('disconnected');
+          connection.close();
+        }
+      }, CONNECTION_TIMEOUT_MS);
+      const clearConnectionTimers = () => {
+        window.clearTimeout(connectionTimeout);
+        if (heartbeatInterval !== undefined) window.clearInterval(heartbeatInterval);
+        if (heartbeatTimeout !== undefined) window.clearTimeout(heartbeatTimeout);
+      };
       connection.onopen = () => {
         if (socket.current !== connection) return;
+        window.clearTimeout(connectionTimeout);
         setLiveStatus('connected');
         reconnectAttempt = 0;
+        heartbeatInterval = window.setInterval(() => {
+          if (connection.readyState !== WebSocket.OPEN) return;
+          if (heartbeatTimeout !== undefined) {
+            connection.close();
+            return;
+          }
+          try {
+            connection.send(JSON.stringify({ type: 'ping' }));
+            heartbeatTimeout = window.setTimeout(() => {
+              heartbeatTimeout = undefined;
+              if (socket.current === connection) {
+                setLiveStatus('disconnected');
+                connection.close();
+              }
+            }, HEARTBEAT_TIMEOUT_MS);
+          } catch {
+            setLiveStatus('disconnected');
+            connection.close();
+          }
+        }, HEARTBEAT_INTERVAL_MS);
       };
       connection.onmessage = (event) => {
         if (socket.current !== connection) return;
@@ -191,6 +228,13 @@ export default function App() {
           message = JSON.parse(event.data) as typeof message;
         } catch {
           setSyncError('Received an unreadable response from the live session.');
+          return;
+        }
+        if (message.type === 'pong') {
+          if (heartbeatTimeout !== undefined) {
+            window.clearTimeout(heartbeatTimeout);
+            heartbeatTimeout = undefined;
+          }
           return;
         }
         if (message.type === 'ack' && message.requestId) {
@@ -243,9 +287,12 @@ export default function App() {
         }
       };
       connection.onerror = () => {
-        if (socket.current === connection) setLiveStatus('disconnected');
+        if (socket.current !== connection) return;
+        setLiveStatus('disconnected');
+        connection.close();
       };
       connection.onclose = () => {
+        clearConnectionTimers();
         if (socket.current !== connection) return;
         socket.current = null;
         setLiveStatus('disconnected');
